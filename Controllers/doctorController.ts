@@ -89,6 +89,39 @@ export class DoctorController {
       }
     }
 
+    async googleAuth(req: Request, res: Response): Promise<void> {
+      try {
+        const { token } = req.body;
+        const result = await doctorService.googleAuth(token);
+        
+        res.cookie('docaccessToken', result.accessToken, { 
+          httpOnly: true, 
+          secure: process.env.NODE_ENV === 'production', 
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: 60 * 60 * 1000, 
+          path: '/'
+        });
+  
+        res.cookie('docaccessToken', result.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000, 
+          path: '/'
+        });
+  
+        res.status(200).json({ 
+          message: 'Google authentication successful',
+          username: result.username,
+          email: result.email,
+          role: result.role,
+          isActive: result.isActive
+        });
+      } catch (error: any) {
+        console.error("Google Auth Error:", error);
+        res.status(400).json({ message: error.message }); 
+      }
+    }
   
   }
 

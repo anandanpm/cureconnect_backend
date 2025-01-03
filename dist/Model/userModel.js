@@ -39,7 +39,7 @@ const userSchema = new mongoose_1.Schema({
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: Number, default: null },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
     age: { type: Number, default: null },
     profile_pic: { type: String, default: null },
     is_active: { type: Boolean, default: false },

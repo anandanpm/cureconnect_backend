@@ -9,6 +9,8 @@ const otpService_1 = require("./otpService");
 const user_1 = require("../Interfaces/user");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const google_auth_library_1 = require("google-auth-library");
+const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class DoctorService {
     async signup(userData) {
         const existingUser = await userRepository_1.userRepository.findUserByEmail(userData.email);
@@ -94,6 +96,44 @@ class DoctorService {
         }
         catch (error) {
             throw error;
+        }
+    }
+    async googleAuth(token) {
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: "608044793656-ijtreinvo4rrlavpjbrmjsf01n7rg5fr.apps.googleusercontent.com"
+            });
+            const payload = ticket.getPayload();
+            if (!payload || !payload.email) {
+                throw new Error('Invalid Google token');
+            }
+            let user = await userRepository_1.userRepository.findUserByEmail(payload.email);
+            if (!user) {
+                // Create a new user if they don't exist
+                const newUser = {
+                    username: payload.name || '',
+                    email: payload.email,
+                    password: undefined,
+                    role: user_1.UserRole.DOCTOR,
+                    is_active: true // 
+                };
+                user = await userRepository_1.userRepository.createUser(newUser);
+            }
+            const accessToken = jsonwebtoken_1.default.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET || 'your_default_secret', { expiresIn: '15m' });
+            const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret', { expiresIn: '7d' });
+            return {
+                accessToken,
+                refreshToken,
+                username: user.username,
+                email: user.email,
+                isActive: user.is_active,
+                role: user.role
+            };
+        }
+        catch (error) {
+            console.error('Google Auth Error:', error);
+            throw new Error('Failed to authenticate with Google');
         }
     }
 }

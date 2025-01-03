@@ -1,8 +1,11 @@
 import { userRepository } from '../Repository/userRepository';
-import { User } from '../Interfaces/user';
+import { User,UserRole } from '../Interfaces/user';
 import { OtpService } from './otpService';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export class UserService {
   async signup(userData: User) {
@@ -100,6 +103,58 @@ export class UserService {
       return { message: 'New OTP sent successfully' };
     } catch (error) {
       throw error;
+    }
+  }
+
+  async googleAuth(token: string) {
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: "608044793656-ijtreinvo4rrlavpjbrmjsf01n7rg5fr.apps.googleusercontent.com"
+      });
+      const payload = ticket.getPayload();
+      
+      if (!payload || !payload.email) {
+        throw new Error('Invalid Google token');
+      }
+
+      let user = await userRepository.findUserByEmail(payload.email);
+
+      if (!user) {
+        // Create a new user if they don't exist
+        const newUser: User = {
+          username: payload.name || '',
+          email: payload.email,
+          password: undefined, 
+          role: UserRole.PATIENT, 
+          is_active: true // 
+        };
+        user = await userRepository.createUser(newUser);
+      }
+
+      const accessToken = jwt.sign(
+        { userId: user._id, role: user.role },
+        process.env.JWT_SECRET || 'your_default_secret',
+        { expiresIn: '15m' }
+      );
+
+      const refreshToken = jwt.sign(
+        { userId: user._id },
+        process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret',
+        { expiresIn: '7d' }
+      );
+
+      return {
+        accessToken,
+        refreshToken,
+        username: user.username,
+        email: user.email,
+        isActive: user.is_active,
+        role: user.role
+      };
+    } catch (error) {
+      console.error('Google Auth Error:', error);
+      throw new Error('Failed to authenticate with Google');
     }
   }
 }

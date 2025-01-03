@@ -86,6 +86,37 @@ class UserController {
             }
         }
     }
+    async googleAuth(req, res) {
+        try {
+            const { token } = req.body;
+            const result = await userService_1.userService.googleAuth(token);
+            res.cookie('accessToken', result.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: 60 * 60 * 1000,
+                path: '/'
+            });
+            res.cookie('refreshToken', result.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/'
+            });
+            res.status(200).json({
+                message: 'Google authentication successful',
+                username: result.username,
+                email: result.email,
+                role: result.role,
+                isActive: result.isActive
+            });
+        }
+        catch (error) {
+            console.error("Google Auth Error:", error);
+            res.status(400).json({ message: error.message });
+        }
+    }
 }
 exports.UserController = UserController;
 exports.userController = new UserController();

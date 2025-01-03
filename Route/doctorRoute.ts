@@ -8,4 +8,5 @@ docrouter.post('/verifyOtp', doctorController.verifyOtp.bind(doctorController));
 docrouter.post('/resendOtp',doctorController.resendOtp.bind(doctorController));
 docrouter.post('/login',doctorController.login.bind(doctorController));
 docrouter.post('/logout',doctorController.logout.bind(doctorController));
+docrouter.post('/google-auth',doctorController.googleAuth.bind(doctorController));
 export default docrouter;

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { adminService } from '../Services/adminService';
+import { doctorService } from 'Services/doctorService';
 
 class AdminController {
   async login(req: Request, res: Response): Promise<void> {

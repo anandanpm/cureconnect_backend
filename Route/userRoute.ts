@@ -8,5 +8,6 @@ userrouter.post('/verifyOtp', userController.verifyOtp.bind(userController));
 userrouter.post('/login',userController.login.bind(userController));
 userrouter.post('/resendOtp',userController.resendOtp.bind(userController));
 userrouter.post('/logout',userController.logout.bind(userController));
+userrouter.post('/google-auth',userController.googleAuth.bind(userController))
 
 export default userrouter;
