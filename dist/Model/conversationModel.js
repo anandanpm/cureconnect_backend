@@ -34,31 +34,38 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const user_1 = require("../Interfaces/user");
-const userSchema = new mongoose_1.Schema({
-    username: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    phone: { type: Number, default: null },
-    password: { type: String, required: false },
-    age: { type: String, default: null },
-    profile_pic: { type: String, default: null },
-    is_active: { type: Boolean, default: false },
-    gender: { type: String, default: null },
-    address: { type: String, default: null },
-    role: { type: String, enum: Object.values(user_1.UserRole), default: user_1.UserRole.PATIENT },
-    location: { type: String, default: null },
-    clinic_name: { type: String, default: null },
-    about: { type: String, default: null },
-    verified: { type: Boolean, default: false },
-    education: { type: String, default: null },
-    experience: { type: String, default: null },
-    medical_license: { type: String, default: null },
-    department: { type: String, default: null },
-    certification: { type: String, default: null },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-    otp: { type: String || null },
-    otp_expiration: { type: Date || null },
+const messageSchema = new mongoose_1.Schema({
+    text: {
+        type: String
+    },
+    sender: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    seen: {
+        type: Boolean,
+        default: false
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
+    }
 });
-const UserModel = mongoose_1.default.model('User', userSchema);
-exports.default = UserModel;
+const conversationSchema = new mongoose_1.Schema({
+    sender: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    receiver: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    messages: [messageSchema]
+}, {
+    timestamps: true
+});
+const ConversationModel = mongoose_1.default.model('Conversation', conversationSchema);
+exports.default = ConversationModel;

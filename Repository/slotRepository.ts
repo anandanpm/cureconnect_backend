@@ -1,0 +1,29 @@
+import { Slot } from '../Interfaces/slot';
+import SlotModel from '../Model/slotModel';
+
+ class SlotRepository {
+ 
+
+  async createSlot(slot: Slot): Promise<Slot> {
+    const newSlot = new SlotModel(slot);
+    return newSlot.save();
+  }
+
+  async getSlotsByDoctorId(doctorId: string): Promise<Slot[]> {
+    return SlotModel.find({ doctor_id: doctorId,status:'available' }).exec();
+  }
+
+  async deletePastSlots(doctorId: string,currentDate: Date): Promise<void> {
+    await SlotModel.deleteMany({
+      doctor_id: doctorId,
+      day: { $lt: currentDate.toISOString().split('T')[0] }
+    }).exec();
+  }
+
+  async updateSlotStatus(slotId: string, status: string): Promise<Slot | null> {
+    return SlotModel.findByIdAndUpdate(slotId, { status: status }, { new: true }).exec()
+  }
+
+  }
+
+  export const slotRepository = new SlotRepository();

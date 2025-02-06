@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const userController_1 = require("../Controllers/userController");
+const authMiddleware_1 = require("../Middleware/authMiddleware");
 const userrouter = express_1.default.Router();
 userrouter.post('/getOtp', userController_1.userController.getOtp.bind(userController_1.userController));
 userrouter.post('/verifyOtp', userController_1.userController.verifyOtp.bind(userController_1.userController));
@@ -12,4 +13,11 @@ userrouter.post('/login', userController_1.userController.login.bind(userControl
 userrouter.post('/resendOtp', userController_1.userController.resendOtp.bind(userController_1.userController));
 userrouter.post('/logout', userController_1.userController.logout.bind(userController_1.userController));
 userrouter.post('/google-auth', userController_1.userController.googleAuth.bind(userController_1.userController));
+userrouter.put('/update-profile', authMiddleware_1.userAuth, userController_1.userController.updateProfile.bind(userController_1.userController));
+userrouter.get('/verified-doctors', authMiddleware_1.userAuth, userController_1.userController.getDoctors.bind(userController_1.userController));
+userrouter.get('/doctor-slots/:id', authMiddleware_1.userAuth, userController_1.userController.doctorSlots.bind(userController_1.userController));
+userrouter.post('/create-payment-intent', authMiddleware_1.userAuth, userController_1.userController.createPaymentIntent.bind(userController_1.userController));
+userrouter.post('/book-appointment', authMiddleware_1.userAuth, userController_1.userController.createAppointment.bind(userController_1.userController));
+userrouter.get('/appointment-details/:id', authMiddleware_1.userAuth, userController_1.userController.appointmentDetails.bind(userController_1.userController));
+userrouter.post('/refund-appointment', authMiddleware_1.userAuth, userController_1.userController.refundPayment.bind(userController_1.userController));
 exports.default = userrouter;

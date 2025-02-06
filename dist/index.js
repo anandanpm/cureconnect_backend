@@ -13,12 +13,12 @@ const doctorRoute_1 = __importDefault(require("./Route/doctorRoute"));
 const adminRoute_1 = __importDefault(require("./Route/adminRoute"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 // Connect to Database
 (0, db_1.default)();
 // Enable CORS
 app.use((0, cors_1.default)({
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
 }));
 app.use(express_1.default.json());

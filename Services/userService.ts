@@ -4,8 +4,16 @@ import { OtpService } from './otpService';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import dotenv from 'dotenv';
+import { slotRepository } from '../Repository/slotRepository';
+import Stripe from "stripe"
+import SlotModel from '../Model/slotModel';
+dotenv.config();
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-01-27.acacia", 
+})
 
 export class UserService {
   async signup(userData: User) {
@@ -54,20 +62,34 @@ export class UserService {
         throw new Error('Email is incorrect');
       }
 
+      if(user.is_active === false){
+        throw new Error('User is Blocked');
+      }
+      
+      if(user.role !== UserRole.PATIENT){
+        throw new Error('Only patient can login here');
+      }
       const passwordMatch = await bcrypt.compare(password, user.password!);
       if (!passwordMatch) {
         throw new Error('Password is incorrect');
       }
 
-      const accessToken = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET || 'your_default_secret', {
-        expiresIn: '15m', 
-      });
-
-      const refreshToken = jwt.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret', { 
+      if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined');
+      }
+      const accessToken = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
         expiresIn: '7d', 
       });
 
-      return { accessToken,refreshToken,username:user.username,Email:user.email,isActive:user.is_active,role:user.role};
+      if (!process.env.REFRESH_TOKEN_SECRET ) {
+        throw new Error('REFRESH_TOKEN_SECRET is not defined');
+      }
+
+      const refreshToken = jwt.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, { 
+        expiresIn: '7d', 
+      });
+
+      return { accessToken,refreshToken,username:user.username,Email:user.email,isActive:user.is_active,role:user.role,_id:user._id,gender:user.gender,profile_pic:user.profile_pic,phone:user.phone,age:user.age,address:user.address };
     } catch (error) {
       throw error;
     }
@@ -132,6 +154,10 @@ export class UserService {
         user = await userRepository.createUser(newUser);
       }
 
+      if(user.role!==UserRole.PATIENT){
+        throw new Error('Only patient can login here');
+      }
+
       const accessToken = jwt.sign(
         { userId: user._id, role: user.role },
         process.env.JWT_SECRET || 'your_default_secret',
@@ -150,13 +176,189 @@ export class UserService {
         username: user.username,
         email: user.email,
         isActive: user.is_active,
-        role: user.role
+        role: user.role,
+        profile_pic:user.profile_pic,
+        phone:user.phone,
+        age:user.age,
+        gender:user.gender,
+        address:user.address,
+        _id:user._id
       };
     } catch (error) {
       console.error('Google Auth Error:', error);
       throw new Error('Failed to authenticate with Google');
     }
   }
+
+  async profile(userdetails: User) {
+    try {
+      const { _id, ...updateData } = userdetails;
+  
+      if (!_id) {
+        throw new Error('Email is required for profile update');
+      }
+  
+      // Remove keys with undefined or empty string values
+      Object.keys(updateData).forEach((key) => {
+        const typedKey = key as keyof typeof updateData; 
+        if (updateData[typedKey] === undefined || updateData[typedKey] === '') {
+          delete updateData[typedKey];
+        }
+      });
+  
+      const updatedUser = await userRepository.updateUserProfile(_id.toString(), updateData);
+      
+  
+      if (!updatedUser) {
+        throw new Error('User not found or update failed');
+      }
+  
+      return updatedUser;
+    } catch (error) {
+      console.error('Profile update error:', error);
+      throw error;
+    }
+  }
+  
+  async getDoctors() {
+    try {
+      const doctors = await userRepository.findUsersByRole(UserRole.DOCTOR);
+      const verifiedDoctors = doctors.filter(doctor => doctor.verified === true);
+      return verifiedDoctors;
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      throw error;
+    }
+  }
+
+  async getDoctorSlots(doctorId: string) {
+    try {
+      const doctor = await userRepository.findUserById(doctorId)
+      if (!doctor || doctor.role !== UserRole.DOCTOR) {
+        throw new Error("Doctor not found")
+      }
+      const currentDate = new Date();
+      await slotRepository.deletePastSlots(doctorId,currentDate)
+      return slotRepository.getSlotsByDoctorId(doctorId)
+    } catch (error) {
+      console.error("Error fetching doctor slots:", error)
+      throw error
+    }
+  }
+
+  async createPaymentIntent(amount: number) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, 
+        currency: "usd",
+        payment_method_types: ["card"],
+      })
+
+      return paymentIntent.client_secret
+    } catch (error) {
+      console.error("Error creating payment intent:", error)
+      throw new Error("Failed to create payment intent")
+    }
+  }
+
+  async createAppointment(appointmentData: {
+    slot_id: string
+    user_id: string
+    amount: number
+    payment_id:string
+    status: string
+  }) {
+    try {
+      const appointment = await userRepository.createAppointment(appointmentData)
+
+      const updatedSlot = await slotRepository.updateSlotStatus(appointmentData.slot_id, "booked")
+
+      if (!updatedSlot) {
+        throw new Error("Failed to update slot status")
+      }
+
+      return {
+        message: "Appointment created successfully and slot updated",
+        appointment,
+        updatedSlot,
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+
+async getAppointmentDetails(userId: string) {
+  try {
+    const appointmentDetails = await userRepository.findPendingAppointmentsByUserId(userId)
+
+    if (!appointmentDetails || appointmentDetails.length === 0) {
+      throw new Error("No pending appointments found")
+    }
+
+    return appointmentDetails.map(appointment => ({
+      doctorName: appointment.slot_id?.doctor_id?.username || 'Unknown Doctor',
+      doctorDepartment: appointment.slot_id?.doctor_id?.department || 'Not Specified',
+      patientName: appointment.user_id?.username || 'Unknown Patient',
+      startTime: appointment.slot_id?.start_time || '',
+      endTime: appointment.slot_id?.end_time || '',
+      appointmentDate: appointment.slot_id?.day || '',
+      status: appointment.status || 'pending',
+      appointmentId:appointment._id
+    }))
+  } catch (error) {
+    console.error("Error fetching appointment details:", error)
+    throw error
+  }
+}
+
+async refundPayment(appointmentId:string){
+  try {
+    const appointment = await userRepository.findAppointmentById(appointmentId);
+    
+    if (!appointment) {
+      throw new Error('Appointment not found');
+    }
+
+    if (appointment.status === 'cancelled') {
+      throw new Error('Appointment is already cancelled');
+    }
+
+    // Calculate 50% refund amount
+    const refundAmount = Math.floor(appointment.amount * 0.5);
+
+    const refund = await stripe.refunds.create({
+      payment_intent: appointment.payment_id,
+      amount: refundAmount
+    });
+
+    if (refund.status === 'succeeded') {
+
+      appointment.status = 'cancelled';
+      await appointment.save();
+
+      await SlotModel.findByIdAndUpdate(
+        appointment.slot_id,
+        { status: 'available' }
+      );
+
+      return {
+        success: true,
+        message: 'Refund processed successfully',
+        refundAmount,
+        appointmentId: appointment._id
+      };
+    } else {
+      throw new Error('Refund processing failed');
+    }
+
+
+    
+  } catch (error) {
+    
+  }
+}
+
 }
 
 export const userService = new UserService()

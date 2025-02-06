@@ -20,16 +20,16 @@ class OtpService {
             const transporter = nodemailer_1.default.createTransport({
                 service: 'gmail',
                 auth: {
-                    user: process.env.EMAIL_USER || 'curraconnect@gmail.com',
-                    pass: process.env.EMAIL_PASS || 'cwqx gruj urea xvih',
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS,
                 },
             });
             const mailOptions = {
                 from: process.env.EMAIL_FROM,
                 to: email,
-                subject: role === 'patient' ? 'Curra_Connect: OTP for Secure Signup' : 'Curra_Connect: OTP for Doctor Signup', // Differentiate subject based on role
+                subject: 'Curra_Connect: OTP for Secure Signup',
                 text: `
-            Dear ${role === 'patient' ? 'User' : 'Doctor'},
+            Dear User
             
             Thank you for choosing Curra_Connect, your trusted partner for online consultations and appointments.
             
@@ -53,8 +53,6 @@ class OtpService {
         }
     }
     static validateOTP(storedOtp, storedExpiration, userProvidedOtp) {
-        console.log(storedOtp, 'storedOtp is comming and there is no problem');
-        console.log(userProvidedOtp, 'console.loging the userProvided Otp');
         if (storedOtp !== userProvidedOtp) {
             return false;
         }

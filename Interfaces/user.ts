@@ -12,7 +12,7 @@ export interface User {
   email: string;
   phone?: number;
   password?: string;
-  age?: number;
+  age?: string;
   profile_pic?: string;
   is_active?: boolean;
   gender?: string;
@@ -24,9 +24,9 @@ export interface User {
   verified?: boolean;
   education?: string;
   experience?: string;
-  medical_license_no?: string;
+  medical_license?: string;
   department?: string;
-  certifications?: string[];
+  certification?: string;
   created_at?: Date;
   updated_at?: Date;
   otp?: string|null;

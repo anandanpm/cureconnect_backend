@@ -5,7 +5,10 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI ||  'mongodb://localhost:27017/curra_connect'); 
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined');
+    }
+    await mongoose.connect(process.env.MONGODB_URI); 
     console.log('MongoDB Connected...');
   } catch (err:any) {
     console.error(err.message);

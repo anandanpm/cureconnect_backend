@@ -8,7 +8,10 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const connectDB = async () => {
     try {
-        await mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/curra_connect');
+        if (!process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined');
+        }
+        await mongoose_1.default.connect(process.env.MONGODB_URI);
         console.log('MongoDB Connected...');
     }
     catch (err) {

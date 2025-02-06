@@ -10,14 +10,14 @@ import adminRoute from "./Route/adminRoute";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 // Connect to Database
 connectDB();
 
 // Enable CORS
 app.use(cors({
-    origin: 'http://localhost:5173', 
+    origin: process.env.FRONTEND_URL, 
     credentials: true, 
 }));
 
