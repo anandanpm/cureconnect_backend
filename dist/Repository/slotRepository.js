@@ -10,12 +10,34 @@ class SlotRepository {
         const newSlot = new slotModel_1.default(slot);
         return newSlot.save();
     }
+    async getSlotsById(id) {
+        return slotModel_1.default.findById(id);
+    }
+    // async getSlotsByDoctorId(doctorId: string): Promise<Slot[]> {
+    //   return SlotModel.find({ doctor_id: doctorId,status:'available' }).exec();
+    // }
     async getSlotsByDoctorId(doctorId) {
-        return slotModel_1.default.find({ doctor_id: doctorId, status: 'available' }).exec();
+        const currentDate = new Date();
+        const currentDay = currentDate.toISOString().split('T')[0];
+        return slotModel_1.default.find({
+            doctor_id: doctorId,
+            status: 'available',
+            $or: [
+                {
+                    day: currentDay,
+                    start_time: {
+                        $gte: currentDate.getHours() + ':' +
+                            currentDate.getMinutes().toString().padStart(2, '0')
+                    }
+                },
+                { day: { $gt: currentDay } }
+            ]
+        }).exec();
     }
     async deletePastSlots(doctorId, currentDate) {
         await slotModel_1.default.deleteMany({
             doctor_id: doctorId,
+            status: 'available',
             day: { $lt: currentDate.toISOString().split('T')[0] }
         }).exec();
     }

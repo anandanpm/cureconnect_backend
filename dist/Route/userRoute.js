@@ -19,5 +19,12 @@ userrouter.get('/doctor-slots/:id', authMiddleware_1.userAuth, userController_1.
 userrouter.post('/create-payment-intent', authMiddleware_1.userAuth, userController_1.userController.createPaymentIntent.bind(userController_1.userController));
 userrouter.post('/book-appointment', authMiddleware_1.userAuth, userController_1.userController.createAppointment.bind(userController_1.userController));
 userrouter.get('/appointment-details/:id', authMiddleware_1.userAuth, userController_1.userController.appointmentDetails.bind(userController_1.userController));
+userrouter.get('/cancelandcompleteappointment-details/:id', authMiddleware_1.userAuth, userController_1.userController.cancelandcompleteAppointmentDetails.bind(userController_1.userController));
 userrouter.post('/refund-appointment', authMiddleware_1.userAuth, userController_1.userController.refundPayment.bind(userController_1.userController));
+userrouter.post('/reset-password', authMiddleware_1.userAuth, userController_1.userController.resetPassword.bind(userController_1.userController));
+userrouter.post('/send-forgottenpassword', userController_1.userController.sendForgottenpassword.bind(userController_1.userController));
+userrouter.post('/verify-forgottenpassword', userController_1.userController.verifyForgottenpassword.bind(userController_1.userController));
+userrouter.post('/reset-forgottenpassword', userController_1.userController.resetForgottenpassword.bind(userController_1.userController));
+userrouter.get('/prescriptions/:appointmentid', authMiddleware_1.userAuth, userController_1.userController.getPrescriptions.bind(userController_1.userController));
+userrouter.post('/reviews', authMiddleware_1.userAuth, userController_1.userController.reviews.bind(userController_1.userController));
 exports.default = userrouter;

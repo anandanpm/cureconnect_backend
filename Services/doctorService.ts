@@ -1,26 +1,35 @@
 import { userRepository } from "../Repository/userRepository";
 import { slotRepository } from "../Repository/slotRepository";
-import { User } from "../Interfaces/user";
-import { OtpService } from "./otpService";
+import { DoctorAppointment, DoctorLoginResponse,DoctorSignupResponse, User } from "../Interfaces/user";
+import {otpService}from '../Services/otpService'
 import { UserRole } from "../Interfaces/user";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { OAuth2Client } from "google-auth-library";
-import { Slot } from "../Interfaces/slot";
+import { IUserRepository } from "../Interfaces/iUserRepository";
+import{Slot}from '../Interfaces/slot';
+import { ISlotRepository } from "../Interfaces/iSlotRepository";
+import { IDoctorService } from "../Interfaces/iDoctorService";
+import { IOtpService } from "../Interfaces/iotpService";
+import { Prescription } from "Interfaces/prescription";
+
 dotenv.config();
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-export class DoctorService {
-  async signup(userData: User) {
-    const existingUser = await userRepository.findUserByEmail(userData.email);
+export class DoctorService implements IDoctorService {
+   constructor(private userRepository: IUserRepository,private slotRepository:ISlotRepository,private OtpService:IOtpService){}
+  
+
+  async signup(userData: User):Promise<DoctorSignupResponse> {
+    const existingUser = await this.userRepository.findUserByEmail(userData.email);
     if (existingUser) {
       throw new Error("Email already exists");
     }
     const hashedPassword = await bcrypt.hash(userData.password!, 10);
-    const otp = OtpService.generateOTP();
-    const otpExpiration = OtpService.generateOtpExpiration();
+    const otp = this.OtpService.generateOTP();
+    const otpExpiration = this.OtpService.generateOtpExpiration();
     const newUser = {
       ...userData,
       password: hashedPassword,
@@ -29,15 +38,14 @@ export class DoctorService {
       otp_expiration: otpExpiration,
     };
 
-    const createdUser = await userRepository.createUser(newUser);
+    const createdUser = await this.userRepository.createUser(newUser);
     if (!createdUser) throw new Error("User not created");
-    const emailSent = await OtpService.sendOTPEmail(
+    const emailSent = await this.OtpService.sendOTPEmail(
       userData.email,
-      otp,
-      userData.role
+      otp
     );
     if (!emailSent) {
-      await userRepository.updateUser({
+      await this.userRepository.updateUser({
         ...createdUser,
         otp: null,
         otp_expiration: null,
@@ -46,7 +54,7 @@ export class DoctorService {
     }
     return {
       message: "Otp send successfully",
-      userId: createdUser._id,
+      userId: createdUser._id as string,
       username: createdUser.username,
       email: createdUser.email,
       role: createdUser.role,
@@ -54,12 +62,12 @@ export class DoctorService {
   }
 
   async verifyOtp(email: string, otp: string) {
-    const user = await userRepository.findUserByEmail(email);
+    const user = await this.userRepository.findUserByEmail(email);
     if (!user || !user.otp || !user.otp_expiration) {
       throw new Error("Invalid OTP or user not found");
     }
 
-    if (OtpService.validateOTP(user.otp, user.otp_expiration, otp)) {
+    if (this.OtpService.validateOTP(user.otp, user.otp_expiration, otp)) {
       user.is_active = true;
       user.otp = null;
       user.otp_expiration = null;
@@ -70,9 +78,9 @@ export class DoctorService {
     }
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string):Promise<DoctorLoginResponse> {
     try {
-      const user = await userRepository.findUserByEmail(email);
+      const user = await this.userRepository.findUserByEmail(email);
       if (!user) {
         throw new Error("Invalid credentials");
       }
@@ -112,9 +120,9 @@ export class DoctorService {
         accessToken,
         refreshToken,
         username: user.username,
-        Email: user.email,
+        email: user.email,
         role: user.role,
-        isActive: user.is_active,
+        isActive: user.is_active ?? false,
         profile_pic: user.profile_pic,
         phone: user.phone,
         age: user.age,
@@ -127,7 +135,7 @@ export class DoctorService {
         clinic_name: user.clinic_name,
         medical_license: user.medical_license,
         gender: user.gender,
-        _id: user._id,
+        _id: user._id as string,
       };
     } catch (error) {
       throw error;
@@ -136,7 +144,7 @@ export class DoctorService {
 
   async resendOtp(email: string) {
     try {
-      const user = await userRepository.findUserByEmail(email);
+      const user = await this.userRepository.findUserByEmail(email);
       if (!user) {
         throw new Error("User not found");
       }
@@ -145,15 +153,15 @@ export class DoctorService {
         return { message: "User is already verified" };
       }
 
-      const otp = OtpService.generateOTP();
-      const otpExpiration = OtpService.generateOtpExpiration();
+      const otp = this.OtpService.generateOTP();
+      const otpExpiration = this.OtpService.generateOtpExpiration();
       user.otp = otp;
       user.otp_expiration = otpExpiration;
 
-      const updatedUser = await userRepository.updateUser(user);
+      const updatedUser = await this.userRepository.updateUser(user);
       if (!updatedUser) throw new Error("User not updated");
 
-      const emailSent = await OtpService.sendOTPEmail(email, otp, user.role);
+      const emailSent = await this.OtpService.sendOTPEmail(email, otp);
       if (!emailSent) {
         user.otp = null;
         user.otp_expiration = null;
@@ -167,7 +175,7 @@ export class DoctorService {
     }
   }
 
-  async googleAuth(token: string) {
+  async googleAuth(token: string):Promise<DoctorLoginResponse> {
     try {
       const ticket = await client.verifyIdToken({
         idToken: token,
@@ -179,7 +187,7 @@ export class DoctorService {
         throw new Error("Invalid Google token");
       }
 
-      let user = await userRepository.findUserByEmail(payload.email);
+      let user = await this.userRepository.findUserByEmail(payload.email);
 
       if (!user) {
         // Create a new user if they don't exist
@@ -190,7 +198,7 @@ export class DoctorService {
           role: UserRole.DOCTOR,
           is_active: true, //
         };
-        user = await userRepository.createUser(newUser);
+        user = await this.userRepository.createUser(newUser);
       }
       if (user.role !== UserRole.DOCTOR) {
         throw new Error("Only doctor can login here");
@@ -221,14 +229,14 @@ export class DoctorService {
         refreshToken,
         username: user.username,
         email: user.email,
-        isActive: user.is_active,
+        isActive: user.is_active?? false,
         role: user.role,
         profile_pic: user.profile_pic,
         phone: user.phone,
         age: user.age,
         gender: user.gender,
         address: user.address,
-        _id: user._id,
+        _id: user._id as string,
         medical_license: user.medical_license,
         department: user.department,
         certification: user.certification,
@@ -251,7 +259,7 @@ export class DoctorService {
       if (!_id) {
         throw new Error("User ID is required");
       }
-      const user = await userRepository.findUserById(_id.toString());
+      const user = await this.userRepository.findUserById(_id.toString());
       if (!user) {
         throw new Error("User not found");
       }
@@ -273,7 +281,7 @@ export class DoctorService {
         "after the deletion of empty string and empty objects"
       );
 
-      const updatedUser = await userRepository.updateUserProfile(
+      const updatedUser = await this.userRepository.updateUserProfile(
         _id.toString(),
         updateData
       );
@@ -285,6 +293,7 @@ export class DoctorService {
       throw error;
     }
   }
+  
   async addSlots(slotData: any) {
     try {
       const { doctor_id, day, start_time, end_time } = slotData;
@@ -293,7 +302,7 @@ export class DoctorService {
           "Doctor ID, day, start time, and end time are required"
         );
       }
-      const doctor = await userRepository.findUserById(doctor_id);
+      const doctor = await this.userRepository.findUserById(doctor_id);
       if (!doctor) {
         throw new Error("Doctor not found");
       }
@@ -314,9 +323,9 @@ export class DoctorService {
     try {
       const currentDate = new Date();
 
-      await slotRepository.deletePastSlots(doctorId, currentDate);
+      // await this.slotRepository.deletePastSlots(doctorId, currentDate);
 
-      const slots = await slotRepository.getSlotsByDoctorId(doctorId);
+      const slots = await this.slotRepository.getSlotsByDoctorId(doctorId);
       return slots;
     } catch (error) {
       console.error("Error fetching slots:", error);
@@ -324,9 +333,9 @@ export class DoctorService {
     }
   }
 
-  async getDoctorAppointments(doctorId: string) {
+  async getDoctorAppointments(doctorId: string):Promise<DoctorAppointment[]> {
     try {
-      const appointments = await userRepository.findAppointmentsByDoctorId(doctorId);
+      const appointments = await this.userRepository.findAppointmentsByDoctorId(doctorId);
       if (!appointments) {
         return [];
       }
@@ -338,6 +347,206 @@ export class DoctorService {
       throw new Error('Failed to fetch doctor appointments');
     }
   }
+
+  async checkAppointmentValidity(appointmentId: string): Promise<boolean> {
+    try {
+      const appointment = await this.userRepository.findAppointmentWithSlot(appointmentId);
+      
+      if (!appointment) {
+        console.log('Appointment not found');
+        return false;
+      }
+  
+      // Check if slot_id exists
+      if (!appointment.slot_id) {
+        console.log('Slot data not found');
+        return false;
+      }
+  
+      console.log('Retrieved slot data:', appointment.slot_id);
+      
+      // Check for required time fields
+      if (!appointment.slot_id.start_time || !appointment.slot_id.end_time) {
+        console.log('Missing time data in slot');
+        return false;
+      }
+    
+      // Get current time
+      const currentTime = new Date();
+      
+      // Determine appointment date - using the appointment date if available, 
+      // otherwise fallback to the current date
+      let appointmentDate;
+      if (appointment.slot_id.date) {
+        appointmentDate = new Date(appointment.slot_id.date);
+      } else if (appointment.date) {
+        appointmentDate = new Date(appointment.date);
+      } else {
+        // Fallback to today's date if no date field is found
+        appointmentDate = new Date();
+        console.log('No date field found, using current date as fallback');
+      }
+      
+      console.log(appointmentDate, 'the appointmentDate being used');
+      
+      // Convert slot times to Date objects for comparison
+      const [startHours, startMinutes] = appointment.slot_id.start_time.split(':');
+      const appointmentStartTime = new Date(appointmentDate);
+      appointmentStartTime.setHours(parseInt(startHours), parseInt(startMinutes), 0);
+  
+      const [endHours, endMinutes] = appointment.slot_id.end_time.split(':');
+      const appointmentEndTime = new Date(appointmentDate);
+      appointmentEndTime.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+  
+      // Allow calls 5 minutes before the appointment start time
+      const bufferTime = new Date(appointmentStartTime);
+      bufferTime.setMinutes(appointmentStartTime.getMinutes() - 5);
+  
+      // Check if current time is within the valid range
+      const isWithinTimeRange = currentTime >= bufferTime && currentTime <= appointmentEndTime;
+      
+      // Check if appointment status is valid (not cancelled)
+      const isValidStatus = appointment.status === 'pending' || appointment.status === 'completed';
+  
+      console.log({
+        currentTime,
+        appointmentStartTime,
+        appointmentEndTime,
+        bufferTime,
+        isWithinTimeRange,
+        isValidStatus,
+        appointmentStatus: appointment.status
+      });
+  
+      return isWithinTimeRange && isValidStatus;
+    } catch (error) {
+      console.error('Error in checkAppointmentValidity:', error);
+      throw new Error('Failed to check appointment validity');
+    }
+  }
+
+  async resetPassword(doctorId:string,oldPassword:string,newPassword:string){
+    try{
+      const user = await this.userRepository.findUserById(doctorId)
+      if(!user){
+        throw new Error('User not found')
+      }
+      const passwordMatch = await bcrypt.compare(oldPassword, user.password!);
+      if (!passwordMatch) {
+        throw new Error('Old Password is incorrect');
+      }
+      const hashedPassword = await bcrypt.hash(newPassword,10)
+      user.password = hashedPassword
+      await this.userRepository.updateUser(user)
+      return {message:'Password updated successfully'}
+    }catch(error){
+      console.error("Error updating password:", error)
+      throw error
+    }
+  }
+
+  async sendForgottenpassword(email:string){
+    try{
+      const user = await this.userRepository.findUserByEmail(email)
+      if(!user){
+        throw new Error('User not found')
+      }
+      const otp = this.OtpService.generateOTP();
+      const otpExpiration = this.OtpService.generateOtpExpiration();
+      user.otp = otp;
+      user.otp_expiration = otpExpiration;
+      await this.userRepository.updateUser(user)
+      const emailSent = await this.OtpService.sendOTPEmail(email, otp);
+      if (!emailSent) {
+        user.otp = null;
+        user.otp_expiration = null;
+        await this.userRepository.updateUser(user);
+        throw new Error('Failed to send OTP email');
+      }
+      return { message: 'New OTP sent successfully' };
+    }catch(error){
+      console.error("Error sending forgotten password:", error)
+      throw error
+    }
+  }
+  
+  async verifyForgottenpassword(email:string,otpString:string){
+    try{
+      const user = await this.userRepository.findUserByEmail(email)
+      if (!user || !user.otp || !user.otp_expiration) {
+        throw new Error('Invalid OTP or user not found');
+      }
+  
+      if (this.OtpService.validateOTP(user.otp, user.otp_expiration, otpString)) {
+        user.otp = null;
+        user.otp_expiration = null;
+        await this.userRepository.updateUser(user);
+        return { message: 'Otp verified successfully' };
+      } else {
+        throw new Error('Invalid or expired OTP');
+      }
+    }catch(error){
+      console.error("Error verifying forgotten password:", error)
+      throw error
+    }
+  }
+  
+  async resetForgottenpassword(email:string,password:string){
+    try{
+      const user = await this.userRepository.findUserByEmail(email)
+      if(!user){
+        throw new Error('User not found')
+      }
+      const hashedPassword = await bcrypt.hash(password,10)
+      user.password = hashedPassword
+      await this.userRepository.updateUser(user)
+      return {message:'Password updated successfully'}
+    }catch(error){
+      console.error("Error updating password:", error)
+      throw error
+    }
+  
+  }
+  
+  async prescription(prescriptionData: Prescription): Promise<Prescription> {
+    try {
+      if (!prescriptionData.appointment_id) {
+        throw new Error('Appointment ID is required');
+      }
+      
+      const savedPrescription = await this.userRepository.createPrescription(prescriptionData) as Prescription;
+
+      return savedPrescription;
+    } catch (error) {
+      console.error('Error in prescription service:', error);
+      throw error;
+    }
+  }
+
+  async completeAppointment(appointmentId: string): Promise<DoctorAppointment> {
+    try {
+      const appointment = await this.userRepository.findAppointmentById(appointmentId);
+      if (!appointment) {
+        throw new Error('Appointment not found');
+      }
+  
+      if (appointment.status === 'completed') {
+        throw new Error('Appointment already completed');
+      }
+  
+     let status = 'completed';
+      const updatedAppointment = await this.userRepository.updateAppointment(appointmentId,status);
+      if (!updatedAppointment) {
+        throw new Error('Failed to complete appointment');
+      }
+  
+      return updatedAppointment;
+    } catch (error) {
+      console.error('Error in completeAppointment:', error);
+      throw new Error('Failed to complete appointment');
+    }
+  }
+
 }
 
-export const doctorService = new DoctorService();
+export const doctorService = new DoctorService(userRepository,slotRepository,otpService);

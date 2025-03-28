@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.doctorController = exports.DoctorController = void 0;
+exports.doctorController = void 0;
 const doctorService_1 = require("../Services/doctorService");
+const userRepository_1 = require("../Repository/userRepository");
+const slotRepository_1 = require("../Repository/slotRepository");
+const otpService_1 = require("../Services/otpService");
 class DoctorController {
+    constructor(DoctorService) {
+        this.DoctorService = DoctorService;
+    }
     async getOtp(req, res) {
         try {
             const userData = req.body;
-            const result = await doctorService_1.doctorService.signup(userData);
+            const result = await this.DoctorService.signup(userData);
             res.status(200).json(result);
         }
         catch (error) {
@@ -17,7 +23,7 @@ class DoctorController {
     async verifyOtp(req, res) {
         try {
             const { email, otp } = req.body;
-            const result = await doctorService_1.doctorService.verifyOtp(email, otp);
+            const result = await this.DoctorService.verifyOtp(email, otp);
             res.status(200).json(result);
         }
         catch (error) {
@@ -32,7 +38,7 @@ class DoctorController {
                 res.status(400).json({ message: 'Email is required' });
                 return;
             }
-            const result = await doctorService_1.doctorService.resendOtp(email);
+            const result = await this.DoctorService.resendOtp(email);
             res.status(200).json(result);
         }
         catch (error) {
@@ -42,8 +48,8 @@ class DoctorController {
     }
     async login(req, res) {
         try {
-            const { email, password } = req.body;
-            const { accessToken, refreshToken, username, Email, isActive, role, profile_pic, age, phone, certification, experience, department, medical_license, address, clinic_name, about, education, gender, _id } = await doctorService_1.doctorService.login(email, password);
+            const { Email, password } = req.body;
+            const { accessToken, refreshToken, username, email, isActive, role, profile_pic, age, phone, certification, experience, department, medical_license, address, clinic_name, about, education, gender, _id } = await this.DoctorService.login(Email, password);
             console.log(username, 'is the username is comming from there');
             res.cookie('accessToken', accessToken, {
                 secure: process.env.NODE_ENV === 'production',
@@ -81,7 +87,7 @@ class DoctorController {
     async googleAuth(req, res) {
         try {
             const { token } = req.body;
-            const result = await doctorService_1.doctorService.googleAuth(token);
+            const result = await this.DoctorService.googleAuth(token);
             res.cookie('accessToken', result.accessToken, {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -124,7 +130,7 @@ class DoctorController {
         try {
             const docDetails = req.body;
             console.log('Incoming profile update request:', docDetails);
-            const updatedDoc = await doctorService_1.doctorService.profile(docDetails);
+            const updatedDoc = await this.DoctorService.profile(docDetails);
             console.log(updatedDoc, 'the updated one is comming or not');
             res.status(200).json({ message: 'Profile updated successfully', updatedDoc });
         }
@@ -137,7 +143,7 @@ class DoctorController {
         try {
             const slotData = req.body.slots;
             console.log('Incoming slot request:', req.body);
-            const result = await doctorService_1.doctorService.addSlots(slotData);
+            const result = await this.DoctorService.addSlots(slotData);
             res.status(200).json({ message: 'slot added successfully', result });
         }
         catch (error) {
@@ -149,7 +155,7 @@ class DoctorController {
         try {
             const { doctorId } = req.params;
             console.log(doctorId);
-            const result = await doctorService_1.doctorService.getSlots(doctorId);
+            const result = await this.DoctorService.getSlots(doctorId);
             res.status(200).json(result);
         }
         catch (error) {
@@ -159,7 +165,7 @@ class DoctorController {
         try {
             const { doctorId } = req.params;
             console.log(doctorId, 'the doctor id is coming');
-            const appointments = await doctorService_1.doctorService.getDoctorAppointments(doctorId);
+            const appointments = await this.DoctorService.getDoctorAppointments(doctorId);
             res.status(200).json(appointments);
         }
         catch (error) {
@@ -167,6 +173,98 @@ class DoctorController {
             res.status(500).json({ message: 'Failed to fetch appointments' });
         }
     }
+    async checkAppointmentTime(req, res) {
+        try {
+            const { appointmentId } = req.params;
+            console.log(`Checking appointment time for appointment: ${appointmentId}`);
+            if (!appointmentId) {
+                res.status(400).json({
+                    allowed: false,
+                    message: 'Appointment ID is required'
+                });
+                return;
+            }
+            const isValidTime = await this.DoctorService.checkAppointmentValidity(appointmentId);
+            console.log(isValidTime, 'is this is comming or not');
+            res.status(200).json({
+                allowed: isValidTime,
+                message: isValidTime ? 'Appointment time is valid' : 'You time is not reached'
+            });
+        }
+        catch (error) {
+            console.error('Error checking appointment time:', error);
+            res.status(500).json({
+                allowed: false,
+                message: 'Failed to check appointment time'
+            });
+        }
+    }
+    async resetPassword(req, res) {
+        try {
+            console.log(req.body);
+            const { doctorId, oldPassword, newPassword } = req.body;
+            const result = await this.DoctorService.resetPassword(doctorId, oldPassword, newPassword);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+    async sendForgottenpassword(req, res) {
+        try {
+            const { email } = req.body;
+            let result = await this.DoctorService.sendForgottenpassword(email);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            console.log(error);
+            res.status(500).json(error);
+        }
+    }
+    async verifyForgottenpassword(req, res) {
+        try {
+            console.log(req.body);
+            const { email, otpString } = req.body;
+            let result = await this.DoctorService.verifyForgottenpassword(email, otpString);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json(error);
+        }
+    }
+    async resetForgottenpassword(req, res) {
+        try {
+            const { email, password } = req.body;
+            console.log(req.body);
+            let result = await this.DoctorService.resetForgottenpassword(email, password);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json(error);
+        }
+    }
+    async prescription(req, res) {
+        try {
+            const prescriptionData = req.body;
+            console.log('Incoming prescription request:', prescriptionData);
+            const result = await this.DoctorService.prescription(prescriptionData);
+            console.log(result, 'the prescription is added successfully');
+            res.status(200).json({ message: 'prescription added successfully', result });
+        }
+        catch (error) {
+            res.status(500).json(error);
+        }
+    }
+    async completeAppointment(req, res) {
+        try {
+            const { appointmentId } = req.params;
+            const result = await this.DoctorService.completeAppointment(appointmentId);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            console.error('Error completing appointment:', error);
+            res.status(500).json({ message: 'Failed to complete appointment' });
+        }
+    }
 }
-exports.DoctorController = DoctorController;
-exports.doctorController = new DoctorController();
+exports.doctorController = new DoctorController(new doctorService_1.DoctorService(userRepository_1.userRepository, slotRepository_1.slotRepository, otpService_1.otpService));

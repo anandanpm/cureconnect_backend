@@ -1,12 +1,18 @@
 import { Request, Response } from 'express';
-import { adminService } from '../Services/adminService';
+import { AdminService } from '../Services/adminService';
+import { IAdminService } from '../Interfaces/iAdminService';
+import { userRepository } from '../Repository/userRepository';
+import { emailService } from '../Services/emailService';
 
 
 class AdminController {
-  async login(req: Request, res: Response): Promise<void> {
+   constructor(private AdminService: IAdminService){}
+
+
+  async login(req: Request, res: Response):Promise<void> {
     try {
       const { email, password } = req.body;
-      const { accessToken, refreshToken, username, email: adminEmail, role, isActive } = await adminService.login(email, password);
+      const { accessToken, refreshToken, username, email: adminEmail, role, isActive } = await this.AdminService.login(email, password);
 
       res.cookie('accessToken', accessToken, {
         secure: process.env.NODE_ENV === 'production',
@@ -29,8 +35,8 @@ class AdminController {
 
   async logout(req: Request, res: Response): Promise<void> {
     try {
-      res.clearCookie('adminaccessToken');
-      res.clearCookie('adminrefreshToken');
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
       res.json({ message: 'Logout successfully' });
     } catch (error) {
       console.error('Logout Error:', error);
@@ -44,7 +50,7 @@ class AdminController {
 
   async getPatients(req: Request, res: Response): Promise<void> {
    try {
-    let response = await adminService.getPatients();
+    let response = await this.AdminService.getPatients();
    res.status(200).json(response);
    } catch (error) {
     if(error instanceof Error)res.status(400).json({ message: error.message });
@@ -57,7 +63,7 @@ async togglePatientStatus(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const { is_active } = req.body;
 
-    const updatedPatient = await adminService.togglePatientStatus(id, is_active);
+    const updatedPatient = await this.AdminService.togglePatientStatus(id, is_active);
     res.status(200).json(updatedPatient);
   } catch (error) {
     console.error('Toggle Patient Status Error:', error);
@@ -71,7 +77,7 @@ async togglePatientStatus(req: Request, res: Response): Promise<void> {
 
 async getVerifyDoctors(req: Request, res: Response): Promise<void> {
   try {
-    const doctors = await adminService.getVerifyDoctors();
+    const doctors = await this.AdminService.getVerifyDoctors();
     res.status(200).json(doctors);
   } catch (error) {
     console.error('Get Doctors Error:', error);
@@ -85,7 +91,7 @@ async getVerifyDoctors(req: Request, res: Response): Promise<void> {
 
 async getDoctors(req:Request,res:Response):Promise<void>{
   try {
-    const doctors = await adminService.getDoctors();
+    const doctors = await this.AdminService.getDoctors();
     res.status(200).json(doctors)
 
   } catch (error) {
@@ -105,7 +111,7 @@ async toggleDoctorStatus(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
 
-    const updatedDoctor = await adminService.toggleDoctorStatus(id);
+    const updatedDoctor = await this.AdminService.toggleDoctorStatus(id);
     console.log(updatedDoctor,'the updateddoctor from the toggle')
     res.status(200).json(updatedDoctor);
   } catch (error) {
@@ -121,7 +127,7 @@ async toggleDoctorStatus(req: Request, res: Response): Promise<void> {
 async verifyDoctor(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const verifiedDoctor = await adminService.verifyDoctor(id);
+    const verifiedDoctor = await this.AdminService.verifyDoctor(id);
     console.log(verifiedDoctor,'is there any  problem in this form the verifydoctor of the admin controller')
     res.status(200).json(verifiedDoctor);
   } catch (error) {
@@ -139,7 +145,7 @@ async rejectDoctor(req: Request, res: Response): Promise<void> {
     const { id } = req.params
     const { reason } = req.body
 
-    await adminService.rejectDoctor(id, reason)
+    await this.AdminService.rejectDoctor(id, reason)
 
     res.status(200).json({ message: "Doctor rejected successfully" })
   } catch (error) {
@@ -148,6 +154,37 @@ async rejectDoctor(req: Request, res: Response): Promise<void> {
   }
 }
 
+async getDashboardMetrics(req: Request, res: Response): Promise<void> {
+  try {
+    const metrics = await this.AdminService.getDashboardMetrics();
+    res.status(200).json(metrics);
+  } catch (error) {
+    console.error('Get Dashboard Metrics Error:', error);
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(400).json({ message: 'An unknown error occurred' });
+    }
+  }
 }
-export const adminController = new AdminController();
+
+async getAppointmentStats(req: Request, res: Response): Promise<void> {
+  try {
+    const timeRange = req.query.timeRange as string || 'lastWeek';
+    const stats = await this.AdminService.getAppointmentChartStats(timeRange);
+    console.log(stats,'the stats is comming or not')
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Get Appointment Stats Error:', error);
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(400).json({ message: 'An unknown error occurred' });
+    }
+  }
+}
+
+}
+
+export const adminController = new AdminController(new AdminService(userRepository,emailService));
 

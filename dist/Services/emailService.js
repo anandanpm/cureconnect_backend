@@ -75,5 +75,42 @@ class EmailService {
             return false;
         }
     }
+    async sendAppointmentConfirmation(patientEmail, appointmentDetails) {
+        try {
+            const mailOptions = {
+                from: process.env.EMAIL_FROM,
+                to: patientEmail,
+                subject: "Curra_Connect: Appointment Confirmation",
+                text: `
+          Dear Patient,
+
+          Your appointment has been successfully booked with Curra_Connect.
+
+          Appointment Details:
+          - Doctor: Dr. ${appointmentDetails.doctorName}
+          - Department: ${appointmentDetails.department}
+          - Day: ${appointmentDetails.day}
+          - Time: ${appointmentDetails.startTime} - ${appointmentDetails.endTime}
+          - Amount Paid: $${appointmentDetails.amount}
+          - Status: ${appointmentDetails.status}
+
+          Please make sure to arrive 10 minutes before your scheduled appointment time.
+
+          For any questions or assistance, please contact our support team at support@curra_connect.com.
+
+          Thank you for choosing Curra_Connect!
+
+          Best regards,
+          The Curra_Connect Team
+        `,
+            };
+            await this.transporter.sendMail(mailOptions);
+            return true;
+        }
+        catch (error) {
+            console.error("Appointment Confirmation Email Error:", error);
+            return false;
+        }
+    }
 }
 exports.emailService = new EmailService();

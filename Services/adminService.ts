@@ -1,15 +1,22 @@
-import { User, UserRole } from "../Interfaces/user";
+import { AdminLoginResponse, User, UserRole } from "../Interfaces/user";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { userRepository } from "../Repository/userRepository";
+// import { emailService } from "./emailService";
+import { IUserRepository } from "../Interfaces/iUserRepository";
+import { ChartAppointmentStats, DashboardStats } from "Interfaces/appointment";
+import { IAdminService } from "Interfaces/iAdminService";
+import { IEmailService } from "Interfaces/iEmailService";
 import { emailService } from "./emailService";
 dotenv.config();
 
-class AdminService {
-  async login(email: string, password: string) {
+export class AdminService implements IAdminService{
+    constructor(private userRepository: IUserRepository,private emailService:IEmailService){}
+    
+  async login(email: string, password: string):Promise<AdminLoginResponse> {
     try {
-      const admin = await userRepository.findUserByEmail(email);
+      const admin = await this.userRepository.findUserByEmail(email);
       if (!admin || admin.role !== UserRole.ADMIN) {
         throw new Error("Invalid credentials");
       }
@@ -45,7 +52,7 @@ class AdminService {
         username: admin.username,
         email: admin.email,
         role: admin.role,
-        isActive: admin.is_active,
+        isActive: admin.is_active??true,
       };
     } catch (error) {
       throw error;
@@ -54,7 +61,7 @@ class AdminService {
 
   async getPatients(): Promise<User[]> {
     try {
-      const users = await userRepository.findAllUsers();
+      const users = await this.userRepository.findAllUsers();
 
       const patients = users.filter((user) => user.role === "patient");
 
@@ -70,7 +77,7 @@ class AdminService {
     is_active: boolean
   ): Promise<User | null> {
     try {
-      const user = await userRepository.findUserById(id);
+      const user = await this.userRepository.findUserById(id);
 
       if (!user) {
         throw new Error("User not found");
@@ -80,7 +87,7 @@ class AdminService {
         throw new Error("User is not a patient");
       }
 
-      const updatedUser = await userRepository.updateUserStatus(id, is_active);
+      const updatedUser = await this.userRepository.updateUserStatus(id, is_active);
       return updatedUser;
     } catch (error) {
       console.error("Error toggling patient status:", error);
@@ -90,7 +97,7 @@ class AdminService {
 
   async getVerifyDoctors(): Promise<User[]> {
     try {
-      return await userRepository.findAllVerifyDoctors();
+      return await this.userRepository.findAllVerifyDoctors();
     } catch (error) {
       console.error("Error fetching doctors:", error);
       throw error;
@@ -99,7 +106,7 @@ class AdminService {
 
   async getDoctors(): Promise<User[]> {
     try {
-      return await userRepository.findAllDoctors();
+      return await this.userRepository.findAllDoctors();
     } catch (error) {
       console.error("Error fetching doctor", error);
       throw error;
@@ -108,7 +115,7 @@ class AdminService {
 
   async rejectDoctor(id: string, reason: string): Promise<void> {
     try {
-      const doctor = await userRepository.findUserById(id)
+      const doctor = await this.userRepository.findUserById(id)
 
       if (!doctor) {
         throw new Error("Doctor not found")
@@ -119,10 +126,10 @@ class AdminService {
       }
 
       // Send rejection email
-      await emailService.sendRejectionEmail(doctor.email, reason)
+      await this.emailService.sendRejectionEmail(doctor.email, reason)
 
       // Remove doctor from the database
-      await userRepository.removeUser(id)
+      await this.userRepository.removeUser(id)
     } catch (error) {
       console.error("Error rejecting doctor:", error)
       throw error
@@ -131,7 +138,7 @@ class AdminService {
 
   async toggleDoctorStatus(id: string): Promise<User | null> {
     try {
-      const user = await userRepository.findUserById(id);
+      const user = await this.userRepository.findUserById(id);
 
       if (!user) {
         throw new Error("User not found");
@@ -142,36 +149,16 @@ class AdminService {
       }
       const newStatus = !user.is_active;
 
-      return await userRepository.updateUserStatus(id, newStatus);
+      return await this.userRepository.updateUserStatus(id, newStatus);
     } catch (error) {
       console.error("Error toggling doctor status:", error);
       throw error;
     }
   }
 
-  // async verifyDoctor(id: string): Promise<User | null> {
-  //   try {
-  //     const user = await userRepository.findUserById(id);
-
-  //     if (!user) {
-  //       throw new Error("User not found");
-  //     }
-
-  //     if (user.role !== UserRole.DOCTOR) {
-  //       throw new Error("User is not a doctor");
-  //     }
-
-  //     const is_verified = !user.verified;
-  //     return await userRepository.updateDoctorVerification(id, is_verified);
-  //   } catch (error) {
-  //     console.error("Error verifying doctor:", error);
-  //     throw error;
-  //   }
-  // }
-
-  async verifyDoctor(id: string): Promise<User | null> {
+    async verifyDoctor(id: string): Promise<User | null> {
     try {
-      const user = await userRepository.findUserById(id)
+      const user = await this.userRepository.findUserById(id)
 
       if (!user) {
         throw new Error("User not found")
@@ -182,11 +169,11 @@ class AdminService {
       }
 
       const is_verified = true // Always set to true when approving
-      const updatedUser = await userRepository.updateDoctorVerification(id, is_verified)
+      const updatedUser = await this.userRepository.updateDoctorVerification(id, is_verified)
 
       if (updatedUser && is_verified) {
         // Send approval email
-        await emailService.sendApprovalEmail(updatedUser.email)
+        await this.emailService.sendApprovalEmail(updatedUser.email)
       }
 
       return updatedUser
@@ -195,6 +182,26 @@ class AdminService {
       throw error
     }
   }
+
+  async getDashboardMetrics(): Promise<DashboardStats> {
+    try {
+      const stats = await this.userRepository.getDashboardStats();
+      console.log(stats,'is the stats is comming or not')
+      return stats;
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      throw error;
+    }
+  }
+
+  async getAppointmentChartStats(timeRange: string): Promise<ChartAppointmentStats> {
+    try {
+      return await this.userRepository.getAppointmentChartStats(timeRange);
+    } catch (error) {
+      console.error('Error fetching appointment chart stats:', error);
+      throw error;
+    }
+  }
 }
 
-export const adminService = new AdminService();
+export const adminService = new AdminService(userRepository,emailService);

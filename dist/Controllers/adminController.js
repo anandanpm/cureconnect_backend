@@ -2,11 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminController = void 0;
 const adminService_1 = require("../Services/adminService");
+const userRepository_1 = require("../Repository/userRepository");
+const emailService_1 = require("../Services/emailService");
 class AdminController {
+    constructor(AdminService) {
+        this.AdminService = AdminService;
+    }
     async login(req, res) {
         try {
             const { email, password } = req.body;
-            const { accessToken, refreshToken, username, email: adminEmail, role, isActive } = await adminService_1.adminService.login(email, password);
+            const { accessToken, refreshToken, username, email: adminEmail, role, isActive } = await this.AdminService.login(email, password);
             res.cookie('accessToken', accessToken, {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
@@ -26,8 +31,8 @@ class AdminController {
     }
     async logout(req, res) {
         try {
-            res.clearCookie('adminaccessToken');
-            res.clearCookie('adminrefreshToken');
+            res.clearCookie('accessToken');
+            res.clearCookie('refreshToken');
             res.json({ message: 'Logout successfully' });
         }
         catch (error) {
@@ -42,7 +47,7 @@ class AdminController {
     }
     async getPatients(req, res) {
         try {
-            let response = await adminService_1.adminService.getPatients();
+            let response = await this.AdminService.getPatients();
             res.status(200).json(response);
         }
         catch (error) {
@@ -56,7 +61,7 @@ class AdminController {
         try {
             const { id } = req.params;
             const { is_active } = req.body;
-            const updatedPatient = await adminService_1.adminService.togglePatientStatus(id, is_active);
+            const updatedPatient = await this.AdminService.togglePatientStatus(id, is_active);
             res.status(200).json(updatedPatient);
         }
         catch (error) {
@@ -71,7 +76,7 @@ class AdminController {
     }
     async getVerifyDoctors(req, res) {
         try {
-            const doctors = await adminService_1.adminService.getVerifyDoctors();
+            const doctors = await this.AdminService.getVerifyDoctors();
             res.status(200).json(doctors);
         }
         catch (error) {
@@ -86,7 +91,7 @@ class AdminController {
     }
     async getDoctors(req, res) {
         try {
-            const doctors = await adminService_1.adminService.getDoctors();
+            const doctors = await this.AdminService.getDoctors();
             res.status(200).json(doctors);
         }
         catch (error) {
@@ -102,7 +107,7 @@ class AdminController {
     async toggleDoctorStatus(req, res) {
         try {
             const { id } = req.params;
-            const updatedDoctor = await adminService_1.adminService.toggleDoctorStatus(id);
+            const updatedDoctor = await this.AdminService.toggleDoctorStatus(id);
             console.log(updatedDoctor, 'the updateddoctor from the toggle');
             res.status(200).json(updatedDoctor);
         }
@@ -119,7 +124,7 @@ class AdminController {
     async verifyDoctor(req, res) {
         try {
             const { id } = req.params;
-            const verifiedDoctor = await adminService_1.adminService.verifyDoctor(id);
+            const verifiedDoctor = await this.AdminService.verifyDoctor(id);
             console.log(verifiedDoctor, 'is there any  problem in this form the verifydoctor of the admin controller');
             res.status(200).json(verifiedDoctor);
         }
@@ -137,7 +142,7 @@ class AdminController {
         try {
             const { id } = req.params;
             const { reason } = req.body;
-            await adminService_1.adminService.rejectDoctor(id, reason);
+            await this.AdminService.rejectDoctor(id, reason);
             res.status(200).json({ message: "Doctor rejected successfully" });
         }
         catch (error) {
@@ -145,5 +150,37 @@ class AdminController {
             res.status(500).json({ message: "An error occurred while rejecting the doctor" });
         }
     }
+    async getDashboardMetrics(req, res) {
+        try {
+            const metrics = await this.AdminService.getDashboardMetrics();
+            res.status(200).json(metrics);
+        }
+        catch (error) {
+            console.error('Get Dashboard Metrics Error:', error);
+            if (error instanceof Error) {
+                res.status(400).json({ message: error.message });
+            }
+            else {
+                res.status(400).json({ message: 'An unknown error occurred' });
+            }
+        }
+    }
+    async getAppointmentStats(req, res) {
+        try {
+            const timeRange = req.query.timeRange || 'lastWeek';
+            const stats = await this.AdminService.getAppointmentChartStats(timeRange);
+            console.log(stats, 'the stats is comming or not');
+            res.status(200).json(stats);
+        }
+        catch (error) {
+            console.error('Get Appointment Stats Error:', error);
+            if (error instanceof Error) {
+                res.status(400).json({ message: error.message });
+            }
+            else {
+                res.status(400).json({ message: 'An unknown error occurred' });
+            }
+        }
+    }
 }
-exports.adminController = new AdminController();
+exports.adminController = new AdminController(new adminService_1.AdminService(userRepository_1.userRepository, emailService_1.emailService));

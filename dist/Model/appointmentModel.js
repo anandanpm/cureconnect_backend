@@ -44,6 +44,7 @@ const appointmentSchema = new mongoose_1.Schema({
         default: 'pending'
     },
     payment_id: { type: String },
+    refund: { type: Number },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now }
 });

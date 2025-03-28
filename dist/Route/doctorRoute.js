@@ -17,4 +17,11 @@ docrouter.put('/profile', authMiddleware_1.doctorAuth, doctorController_1.doctor
 docrouter.post('/slots', authMiddleware_1.doctorAuth, doctorController_1.doctorController.addSlots.bind(doctorController_1.doctorController));
 docrouter.get('/getslots/:doctorId', authMiddleware_1.doctorAuth, doctorController_1.doctorController.getSlots.bind(doctorController_1.doctorController));
 docrouter.get('/appointments/:doctorId', authMiddleware_1.doctorAuth, doctorController_1.doctorController.getAppointment.bind(doctorController_1.doctorController));
+docrouter.get('/check-appointment-time/:appointmentId', doctorController_1.doctorController.checkAppointmentTime.bind(doctorController_1.doctorController));
+docrouter.post('/reset-password', authMiddleware_1.doctorAuth, doctorController_1.doctorController.resetPassword.bind(doctorController_1.doctorController));
+docrouter.post('/send-forgottenpassword', doctorController_1.doctorController.sendForgottenpassword.bind(doctorController_1.doctorController));
+docrouter.post('/verify-forgottenpassword', doctorController_1.doctorController.verifyForgottenpassword.bind(doctorController_1.doctorController));
+docrouter.post('/reset-forgottenpassword', doctorController_1.doctorController.resetForgottenpassword.bind(doctorController_1.doctorController));
+docrouter.post('/prescription', doctorController_1.doctorController.prescription.bind(doctorController_1.doctorController));
+docrouter.patch('/completeappointment/:appointmentId', authMiddleware_1.doctorAuth, doctorController_1.doctorController.completeAppointment.bind(doctorController_1.doctorController));
 exports.default = docrouter;

@@ -3,19 +3,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OtpService = void 0;
+exports.otpService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 class OtpService {
-    static generateOTP() {
+    generateOTP() {
         return crypto_1.default.randomInt(1000, 9999).toString();
     }
-    static generateOtpExpiration() {
-        return new Date(Date.now() + 1 * 60 * 1000);
+    generateOtpExpiration() {
+        return new Date(Date.now() + 10 * 60 * 1000); // Changed to 10 minutes to match email text
     }
-    static async sendOTPEmail(email, otp, role) {
+    async sendOTPEmail(email, otp) {
         try {
             const transporter = nodemailer_1.default.createTransport({
                 service: 'gmail',
@@ -38,7 +38,7 @@ class OtpService {
             
             If you did not initiate this request, please ignore this email or contact our support team at support@curra_connect.com.
             
-            We’re excited to have you on board and look forward to serving your healthcare needs.
+            We're excited to have you on board and look forward to serving your healthcare needs.
             
             Best regards,
             The Curra_Connect Team
@@ -52,7 +52,7 @@ class OtpService {
             return false;
         }
     }
-    static validateOTP(storedOtp, storedExpiration, userProvidedOtp) {
+    validateOTP(storedOtp, storedExpiration, userProvidedOtp) {
         if (storedOtp !== userProvidedOtp) {
             return false;
         }
@@ -62,4 +62,4 @@ class OtpService {
         return true;
     }
 }
-exports.OtpService = OtpService;
+exports.otpService = new OtpService();

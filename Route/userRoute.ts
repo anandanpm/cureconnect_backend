@@ -16,7 +16,12 @@ userrouter.get('/doctor-slots/:id',userAuth,userController.doctorSlots.bind(user
 userrouter.post('/create-payment-intent',userAuth, userController.createPaymentIntent.bind(userController));
 userrouter.post('/book-appointment',userAuth,userController.createAppointment.bind(userController));
  userrouter.get('/appointment-details/:id',userAuth,userController.appointmentDetails.bind(userController));
- userrouter.post('/refund-appointment',userAuth,userController.refundPayment.bind(userController))
-
-
+ userrouter.get('/cancelandcompleteappointment-details/:id',userAuth,userController.cancelandcompleteAppointmentDetails.bind(userController));
+ userrouter.post('/refund-appointment',userAuth,userController.refundPayment.bind(userController));
+ userrouter.post('/reset-password',userAuth,userController.resetPassword.bind(userController));
+ userrouter.post('/send-forgottenpassword',userController.sendForgottenpassword.bind(userController));
+userrouter.post('/verify-forgottenpassword',userController.verifyForgottenpassword.bind(userController));
+userrouter.post('/reset-forgottenpassword',userController.resetForgottenpassword.bind(userController));
+ userrouter.get('/prescriptions/:appointmentid',userAuth,userController.getPrescriptions.bind(userController))
+ userrouter.post('/reviews',userAuth,userController.reviews.bind(userController));
 export default userrouter;

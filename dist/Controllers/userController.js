@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userController = exports.UserController = void 0;
+exports.userController = void 0;
 const userService_1 = require("../Services/userService");
+const userRepository_1 = require("../Repository/userRepository");
+const otpService_1 = require("../Services/otpService");
+const slotRepository_1 = require("../Repository/slotRepository");
 class UserController {
+    constructor(UserService) {
+        this.UserService = UserService;
+    }
     async getOtp(req, res) {
         try {
-            const userData = req.body;
-            const result = await userService_1.userService.signup(userData);
+            const { email, password, username } = req.body;
+            const result = await this.UserService.signup(username, email, password);
             res.status(200).json(result);
         }
         catch (error) {
@@ -18,7 +24,7 @@ class UserController {
         try {
             const { email, otpString } = req.body;
             console.log(email);
-            const result = await userService_1.userService.verifyOtp(email, otpString);
+            const result = await this.UserService.verifyOtp(email, otpString);
             res.status(200).json(result);
         }
         catch (error) {
@@ -35,7 +41,7 @@ class UserController {
                 res.status(400).json({ message: 'Email is required' });
                 return;
             }
-            const result = await userService_1.userService.resendOtp(email);
+            const result = await this.UserService.resendOtp(email);
             res.status(200).json(result);
         }
         catch (error) {
@@ -45,8 +51,9 @@ class UserController {
     }
     async login(req, res) {
         try {
-            const { email, password } = req.body;
-            const { accessToken, refreshToken, username, Email, role, isActive, _id, gender, profile_pic, phone, age, address } = await userService_1.userService.login(email, password);
+            const { Email, password } = req.body;
+            console.log(req.body);
+            const { accessToken, refreshToken, username, email, role, isActive, _id, gender, profile_pic, phone, age, address } = await this.UserService.login(Email, password);
             res.cookie('accessToken', accessToken, {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -59,7 +66,7 @@ class UserController {
                 maxAge: 7 * 24 * 60 * 60 * 1000,
                 path: '/'
             });
-            res.json({ message: 'Login successful', username, email: Email, role, isActive, _id, age, gender, profile_pic, phone, address });
+            res.json({ message: 'Login successful', username, email, role, isActive, _id, age, gender, profile_pic, phone, address });
         }
         catch (error) {
             console.error("Login Error:", error);
@@ -85,7 +92,7 @@ class UserController {
     async googleAuth(req, res) {
         try {
             const { token } = req.body;
-            const result = await userService_1.userService.googleAuth(token);
+            const result = await this.UserService.googleAuth(token);
             res.cookie('accessToken', result.accessToken, {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -121,7 +128,7 @@ class UserController {
         try {
             const userDetails = req.body;
             console.log('Incoming profile update request:', userDetails);
-            const updatedUser = await userService_1.userService.profile(userDetails);
+            const updatedUser = await this.UserService.profile(userDetails);
             res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });
         }
         catch (error) {
@@ -131,8 +138,12 @@ class UserController {
     }
     async getDoctors(req, res) {
         try {
-            const doctors = await userService_1.userService.getDoctors();
-            res.status(200).json(doctors);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 6;
+            const search = req.query.search || "";
+            const department = req.query.department || "";
+            const result = await this.UserService.getDoctors(page, limit, search, department);
+            res.status(200).json(result);
         }
         catch (error) {
             console.error('Error fetching doctors:', error);
@@ -142,7 +153,8 @@ class UserController {
     async doctorSlots(req, res) {
         try {
             const doctorId = req.params.id;
-            const slots = await userService_1.userService.getDoctorSlots(doctorId);
+            const slots = await this.UserService.getDoctorSlots(doctorId);
+            console.log(slots, 'the slots are comming');
             res.status(200).json(slots);
         }
         catch (error) {
@@ -158,7 +170,7 @@ class UserController {
     async createPaymentIntent(req, res) {
         try {
             const { userId, amount } = req.body;
-            const clientSecret = await userService_1.userService.createPaymentIntent(amount);
+            const clientSecret = await this.UserService.createPaymentIntent(amount);
             console.log(clientSecret, 'is this creating');
             res.status(200).json({ clientSecret });
         }
@@ -177,7 +189,7 @@ class UserController {
                 payment_id: req.body.paymentId,
                 status: 'pending'
             };
-            const result = await userService_1.userService.createAppointment(appointmentData);
+            const result = await this.UserService.createAppointment(appointmentData);
             res.status(201).json(result);
         }
         catch (error) {
@@ -185,13 +197,32 @@ class UserController {
             res.status(500).json({ message: 'Failed to create appointment' });
         }
     }
+    // async appointmentDetails(req: Request, res: Response): Promise<void> {
+    //   try {
+    //     const userId = req.params.id
+    //     console.log(req.params,'is this comming')
+    //     console.log(userId, "the userId is coming from params")
+    //     const appointmentDetails = await this.UserService.getAppointmentDetails(userId)
+    //   console.log(appointmentDetails,'the details are comming ')
+    //     res.status(200).json(appointmentDetails)
+    //   } catch (error) {
+    //     console.error("Error in appointmentDetails:", error)
+    //     if (error instanceof Error && error.message === "No appointment found for this user") {
+    //       res.status(404).json({ message: "No appointment found for this user" })
+    //     } else {
+    //       res.status(500).json({ message: "Internal server error" })
+    //     }
+    //   }
+    // }
     async appointmentDetails(req, res) {
         try {
             const userId = req.params.id;
-            console.log(req.params, 'is this comming');
+            const page = parseInt(req.query.page) || 1;
+            const pageSize = parseInt(req.query.pageSize) || 3;
             console.log(userId, "the userId is coming from params");
-            const appointmentDetails = await userService_1.userService.getAppointmentDetails(userId);
-            console.log(appointmentDetails, 'the details are comming ');
+            console.log("Pagination:", { page, pageSize });
+            const appointmentDetails = await this.UserService.getAppointmentDetails(userId, page, pageSize);
+            console.log('Total appointments found:', appointmentDetails.totalCount);
             res.status(200).json(appointmentDetails);
         }
         catch (error) {
@@ -208,7 +239,7 @@ class UserController {
         try {
             console.log(req.body, 'the body is comming and correct');
             const { appointmentId } = req.body;
-            const result = await userService_1.userService.refundPayment(appointmentId);
+            const result = await this.UserService.refundPayment(appointmentId);
             res.status(200).json({ result });
         }
         catch (error) {
@@ -216,6 +247,108 @@ class UserController {
             res.status(500).json({ message: 'Internal server error' });
         }
     }
+    // async cancelandcompleteAppointmentDetails(req: Request, res: Response): Promise<void> {
+    //   try {
+    //     const userId = req.params.id
+    //     console.log(req.params,'is this comming')
+    //     console.log(userId, "the userId is coming from params")
+    //     const appointmentDetails = await this.UserService.getcancelandcompleteAppointmentDetails(userId)
+    //   console.log(appointmentDetails,'the details are comming ')
+    //     res.status(200).json(appointmentDetails)
+    //   } catch (error) {
+    //     console.error("Error in appointmentDetails:", error)
+    //     if (error instanceof Error && error.message === "No appointment found for this user") {
+    //       res.status(404).json({ message: "No appointment found for this user" })
+    //     } else {
+    //       res.status(500).json({ message: "Internal server error" })
+    //     }
+    //   }
+    // }
+    async cancelandcompleteAppointmentDetails(req, res) {
+        try {
+            const userId = req.params.id;
+            // Extract pagination and filter parameters
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 3;
+            const status = req.query.status;
+            console.log(`Fetching appointments for user ${userId}, page ${page}, limit ${limit}, status ${status || 'all'}`);
+            const result = await this.UserService.getcancelandcompleteAppointmentDetails(userId, page, limit, status);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            console.error("Error in appointmentDetails:", error);
+            if (error instanceof Error && error.message === "No appointment found for this user") {
+                res.status(404).json({ message: "No appointment found for this user" });
+            }
+            else {
+                res.status(500).json({ message: "Internal server error" });
+            }
+        }
+    }
+    async resetPassword(req, res) {
+        try {
+            const { userId, oldPassword, newPassword } = req.body;
+            const result = await this.UserService.resetPassword(userId, oldPassword, newPassword);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+    async sendForgottenpassword(req, res) {
+        try {
+            const { email } = req.body;
+            let result = await this.UserService.sendForgottenpassword(email);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            console.log(error);
+            res.status(500).json(error);
+        }
+    }
+    async verifyForgottenpassword(req, res) {
+        try {
+            console.log(req.body);
+            const { email, otpString } = req.body;
+            let result = await this.UserService.verifyForgottenpassword(email, otpString);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json(error);
+        }
+    }
+    async resetForgottenpassword(req, res) {
+        try {
+            const { email, password } = req.body;
+            console.log(req.body);
+            let result = await this.UserService.resetForgottenpassword(email, password);
+            res.status(200).json(result);
+        }
+        catch (error) {
+        }
+    }
+    async getPrescriptions(req, res) {
+        try {
+            const appointmentId = req.params.appointmentid;
+            console.log(appointmentId);
+            let result = await this.UserService.getPrescriptions(appointmentId);
+            console.log(result);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json({ message: 'something went wrong' });
+        }
+    }
+    async reviews(req, res) {
+        try {
+            const { appointmentid, rating, reviewText, userid } = req.body;
+            console.log(req.body);
+            let result = await this.UserService.reviews(appointmentid, rating, reviewText, userid);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            res.status(500).json({ message: 'something went wrong' });
+        }
+    }
 }
-exports.UserController = UserController;
-exports.userController = new UserController();
+exports.userController = new UserController(new userService_1.UserService(userRepository_1.userRepository, slotRepository_1.slotRepository, otpService_1.otpService));

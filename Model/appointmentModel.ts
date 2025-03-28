@@ -11,6 +11,7 @@ const appointmentSchema = new Schema<Appointment>({
     default: 'pending' 
   },
   payment_id:{type:String},
+  refund:{type:Number},
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });

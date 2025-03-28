@@ -14,4 +14,11 @@ docrouter.put('/profile', doctorAuth,doctorController.updateProfile.bind(doctorC
 docrouter.post('/slots',doctorAuth,doctorController.addSlots.bind(doctorController));
 docrouter.get('/getslots/:doctorId',doctorAuth,doctorController.getSlots.bind(doctorController));
 docrouter.get('/appointments/:doctorId',doctorAuth,doctorController.getAppointment.bind(doctorController));
+docrouter.get('/check-appointment-time/:appointmentId', doctorController.checkAppointmentTime.bind(doctorController));
+docrouter.post('/reset-password',doctorAuth,doctorController.resetPassword.bind(doctorController));
+ docrouter.post('/send-forgottenpassword',doctorController.sendForgottenpassword.bind(doctorController));
+docrouter.post('/verify-forgottenpassword',doctorController.verifyForgottenpassword.bind(doctorController));
+docrouter.post('/reset-forgottenpassword',doctorController.resetForgottenpassword.bind(doctorController));
+docrouter.post('/prescription',doctorController.prescription.bind(doctorController));
+docrouter.patch('/completeappointment/:appointmentId',doctorAuth,doctorController.completeAppointment.bind(doctorController));
 export default docrouter;
