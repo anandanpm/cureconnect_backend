@@ -14,5 +14,7 @@ adminrouter.post('/doctors/:id/reject',adminAuth,adminController.rejectDoctor.bi
 adminrouter.patch('/doctors/:id/toggle-status',adminAuth,adminController.toggleDoctorStatus.bind(adminController));
 adminrouter.patch('/doctors/:id/verify',adminAuth,adminController.verifyDoctor.bind(adminController));
 adminrouter.get('/dashboard-metrics', adminAuth, adminController.getDashboardMetrics.bind(adminController));
- adminrouter.get('/appointment-stats', adminAuth, adminController.getAppointmentStats.bind(adminController));
+adminrouter.get('/appointment-stats', adminAuth, adminController.getAppointmentStats.bind(adminController));
+adminrouter.post('/refresh-token',adminController.refreshToken.bind(adminController));
+
 export default adminrouter;

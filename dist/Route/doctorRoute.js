@@ -24,4 +24,5 @@ docrouter.post('/verify-forgottenpassword', doctorController_1.doctorController.
 docrouter.post('/reset-forgottenpassword', doctorController_1.doctorController.resetForgottenpassword.bind(doctorController_1.doctorController));
 docrouter.post('/prescription', doctorController_1.doctorController.prescription.bind(doctorController_1.doctorController));
 docrouter.patch('/completeappointment/:appointmentId', authMiddleware_1.doctorAuth, doctorController_1.doctorController.completeAppointment.bind(doctorController_1.doctorController));
+docrouter.post('/refresh-token', doctorController_1.doctorController.refreshToken.bind(doctorController_1.doctorController));
 exports.default = docrouter;

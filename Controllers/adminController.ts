@@ -3,6 +3,7 @@ import { AdminService } from '../Services/adminService';
 import { IAdminService } from '../Interfaces/iAdminService';
 import { userRepository } from '../Repository/userRepository';
 import { emailService } from '../Services/emailService';
+import jwt from 'jsonwebtoken';
 
 
 class AdminController {
@@ -181,6 +182,70 @@ async getAppointmentStats(req: Request, res: Response): Promise<void> {
     } else {
       res.status(400).json({ message: 'An unknown error occurred' });
     }
+  }
+}
+
+async refreshToken(req: Request, res: Response): Promise<void> {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    
+    console.log('Refresh token from cookies:', refreshToken);
+    
+    // Check if refresh token exists
+    if (!refreshToken) {
+      console.log('Refresh token not found in cookies');
+      res.status(401).json({ message: 'Refresh token not found in cookies' });
+      return;
+    }
+    
+    // Verify the token
+    try {
+      if (!process.env.REFRESH_TOKEN_SECRET) {
+        throw new Error('JWT_REFRESH_SECRET is not defined');
+      }
+      const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+      console.log(decoded, 'is the decoded is coming or not');
+      
+      // Generate new tokens
+      const userId = (decoded as jwt.JwtPayload).userId;
+      console.log(userId,'the userid is comming or not')
+      
+      const newAccessToken = jwt.sign(
+        { userId: userId },
+        process.env.JWT_SECRET || '',
+        { expiresIn: '15m' }
+      );
+      
+      const newRefreshToken = jwt.sign(
+        { userId: userId },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: '7d' }
+      );
+      
+      // Set the new tokens as cookies
+      res.cookie('accessToken', newAccessToken, {
+
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+      
+      res.cookie('refreshToken', newRefreshToken, {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      
+      res.status(200).json({ message: 'Token refreshed successfully' });
+      return;
+    } catch (error) {
+      console.error('Token verification error:', error);
+      res.status(401).json({ message: 'Invalid refresh token' });
+      return;
+    }
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 

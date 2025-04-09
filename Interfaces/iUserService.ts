@@ -5,6 +5,7 @@ import { Prescription } from './prescription';
 
 
 export interface IUserService {
+  findUserById(userId: any): unknown;
   
   signup( username:string,email:string,password:string): Promise<SignupResponse>;
 

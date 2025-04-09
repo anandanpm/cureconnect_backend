@@ -26,6 +26,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export class UserService implements IUserService {
   constructor(private userRepository: IUserRepository,private slotRepository:ISlotRepository,private OtpService:IOtpService){}
+  async findUserById(userId:string): Promise<User | null> {
+    try {
+      const user = await this.userRepository.findUserById(userId);
+    return user
+    } catch (error) {
+      throw error
+    }
+  }
   
   async signup(username:string,email:string,password:string): Promise<SignupResponse> {
     const existingUser = await this.userRepository.findUserByEmail(email);

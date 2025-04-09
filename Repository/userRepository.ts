@@ -255,7 +255,6 @@ async getDashboardStats(): Promise<DashboardStats> {
     const pendingAppointments = appointments.filter(apt => apt.status === 'pending').length;
 
     const revenueGenerated = appointments
-      .filter(apt => apt.status === 'completed')
       .reduce((total, apt) => total + (apt.amount || 0), 0);
 
     return {

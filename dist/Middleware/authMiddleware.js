@@ -8,22 +8,14 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const auth = (allowedRoles) => {
     return (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
+        console.log(token, 'is the token contain only the accesstoken or contain the both the refresh token and acesstoken');
         if (!token) {
             res.status(401).json({ message: 'Please login to continue' });
             return;
         }
         try {
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-            // Role check
-            if (!allowedRoles.includes(decoded.role)) {
-                res.status(403).json({ message: 'Access denied' });
-                return;
-            }
-            // Active status check
-            if (!decoded._active == false) {
-                res.status(403).json({ message: 'Account is inactive' });
-                return;
-            }
+            console.log(decoded, 'what is inside this');
             next();
         }
         catch (error) {

@@ -192,7 +192,6 @@ class UserRepository {
             const cancelledAppointments = appointments.filter(apt => apt.status === 'cancelled').length;
             const pendingAppointments = appointments.filter(apt => apt.status === 'pending').length;
             const revenueGenerated = appointments
-                .filter(apt => apt.status === 'completed')
                 .reduce((total, apt) => total + (apt.amount || 0), 0);
             return {
                 totalDoctors,

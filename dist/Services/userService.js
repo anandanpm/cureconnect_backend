@@ -26,6 +26,15 @@ class UserService {
         this.slotRepository = slotRepository;
         this.OtpService = OtpService;
     }
+    async findUserById(userId) {
+        try {
+            const user = await this.userRepository.findUserById(userId);
+            return user;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
     async signup(username, email, password) {
         const existingUser = await this.userRepository.findUserByEmail(email);
         if (existingUser) {

@@ -24,4 +24,5 @@ userrouter.post('/verify-forgottenpassword',userController.verifyForgottenpasswo
 userrouter.post('/reset-forgottenpassword',userController.resetForgottenpassword.bind(userController));
  userrouter.get('/prescriptions/:appointmentid',userAuth,userController.getPrescriptions.bind(userController))
  userrouter.post('/reviews',userAuth,userController.reviews.bind(userController));
+ userrouter.post('/refresh-token',userController.refreshToken.bind(userController));
 export default userrouter;

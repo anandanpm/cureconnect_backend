@@ -18,4 +18,5 @@ adminrouter.patch('/doctors/:id/toggle-status', authMiddleware_1.adminAuth, admi
 adminrouter.patch('/doctors/:id/verify', authMiddleware_1.adminAuth, adminController_1.adminController.verifyDoctor.bind(adminController_1.adminController));
 adminrouter.get('/dashboard-metrics', authMiddleware_1.adminAuth, adminController_1.adminController.getDashboardMetrics.bind(adminController_1.adminController));
 adminrouter.get('/appointment-stats', authMiddleware_1.adminAuth, adminController_1.adminController.getAppointmentStats.bind(adminController_1.adminController));
+adminrouter.post('/refresh-token', adminController_1.adminController.refreshToken.bind(adminController_1.adminController));
 exports.default = adminrouter;
