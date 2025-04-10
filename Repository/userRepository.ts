@@ -1,5 +1,5 @@
 import UserModel from '../Model/userModel';
-import { DoctorAppointment, User, UserRole } from '../Interfaces/user';
+import { DoctorAppointment, Review, ReviewAdminside, User, UserRole } from '../Interfaces/user';
 import AppointmentModel from '../Model/appointmentModel';
 import { IUserRepository } from '../Interfaces/iUserRepository';
 import { Appointment, ChartAppointmentStats, DashboardStats } from '../Interfaces/appointment';
@@ -7,6 +7,7 @@ import { Prescription } from '../Interfaces/prescription';
 import PrescriptionModel from '../Model/prescriptionModel';
 import ReviewModel from '../Model/reviewModel';
 import SlotModel from '../Model/slotModel';
+import mongoose from 'mongoose';
 
 
 
@@ -808,7 +809,280 @@ async createReview(appointmentid: string, rating:number, reviewText: string,user
     throw error;
   }
 }
- }
+
+// async getAllReviews(): Promise<Review[]> {
+//   try {
+//     // Fetch all reviews from the database with nested population
+//     const reviews = await ReviewModel.find()
+//       .populate({
+//         path: 'appointmentId',
+//         populate: {
+//           path: 'slot_id',
+//           populate: {
+//             path: 'doctor_id',
+//             select: 'username' 
+//           }
+//         }
+//       })
+//       .populate('userId', 'username email ')
+//       .sort({ createdAt: -1 }) // Sort by most recent
+//       .lean();
+    
+//     // Map database documents to the Review interface
+//     console.log(reviews,'is the reviews is comming ')
+//     return reviews
+   
+//   } catch (error) {
+//     console.error('Error in getAllReviews:', error);
+//     throw new Error('Failed to retrieve reviews');
+//   }
+// }
+
+async getAllReviews(): Promise<ReviewAdminside[]> {
+  try {
+    // Fetch all reviews from the database with nested population
+    const reviews = await ReviewModel.find()
+      .populate({
+        path: 'appointmentId',
+        populate: {
+          path: 'slot_id',
+          populate: {
+            path: 'doctor_id',
+            select: 'username profile_pic' 
+          }
+        }
+      })
+      .populate('userId', 'username email')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Map database documents to the Review interface
+    return reviews.map(doc => {
+      // Extract doctor info from the populated fields
+      const slot = (doc.appointmentId as any)?.slot_id || {};
+      const doctorInfo = slot.doctor_id || {};
+      const patientInfo = doc.userId as unknown as User || {};
+
+      // Create the review object according to the interface
+      return {
+        reviewId: doc._id,
+        appointmentId: doc.appointmentId,
+        doctorName: doctorInfo.username || '',
+        doctorProfileImage: doctorInfo.profile_pic || '',
+        patientName: patientInfo.username || '',
+        patientEmail: (patientInfo as { email?: string }).email || '',
+        rating: doc.rating,
+        reviewText: doc.reviewText,
+        createdAt: doc.createdAt
+      } as unknown as ReviewAdminside;
+    });
+  } catch (error) {
+    console.error('Error in getAllReviews:', error);
+    throw new Error('Failed to retrieve reviews');
+  }
+}
+
+// async  getDoctorDashboard(doctorId: string): Promise<any> {
+//   const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
+
+//   // Fetch Stats and Reviews
+//   const [statsData, reviewsData] = await Promise.all([
+
+//     // Stats Aggregation
+//     AppointmentModel.aggregate([
+//       {
+//         $lookup: {
+//           from: 'slots',
+//           localField: 'slot_id',
+//           foreignField: '_id',
+//           as: 'slot'
+//         }
+//       },
+//       { $unwind: '$slot' },
+//       { $match: { 'slot.doctor_id': doctorObjectId } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalAppointments: { $sum: 1 },
+//           uniquePatients: { $addToSet: '$user_id' }
+//         }
+//       },
+//       {
+//         $project: {
+//           totalAppointments: 1,
+//           totalPatients: { $size: '$uniquePatients' }
+//         }
+//       }
+//     ]),
+
+//     // Review Aggregation
+//     ReviewModel.aggregate([
+//       {
+//         $lookup: {
+//           from: 'appointments',
+//           localField: 'appointmentId',
+//           foreignField: '_id',
+//           as: 'appointment'
+//         }
+//       },
+//       { $unwind: '$appointment' },
+//       {
+//         $lookup: {
+//           from: 'slots',
+//           localField: 'appointment.slot_id',
+//           foreignField: '_id',
+//           as: 'slot'
+//         }
+//       },
+//       { $unwind: '$slot' },
+//       { $match: { 'slot.doctor_id': doctorObjectId } },
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'userId',
+//           foreignField: '_id',
+//           as: 'patient'
+//         }
+//       },
+//       { $unwind: '$patient' },
+//       {
+//         $project: {
+//           reviewId: { $toString: '$_id' },
+//           rating: 1,
+//           reviewText: 1,
+//           patientName: '$patient.username',
+//           createdAt: { $dateToString: { format: "%Y-%m-%dT%H:%M:%S.%LZ", date: "$createdAt" } }
+//         }
+//       }
+//     ])
+//   ]);
+
+//   // Calculate average rating
+//   const totalRating = reviewsData.reduce((acc, cur) => acc + cur.rating, 0);
+//   const averageRating = reviewsData.length > 0 ? totalRating / reviewsData.length : 0;
+
+//   return {
+//     stats: {
+//       totalAppointments: statsData[0]?.totalAppointments || 0,
+//       totalPatients: statsData[0]?.totalPatients || 0,
+//       averageRating: parseFloat(averageRating.toFixed(2))
+//     },
+//     reviews: reviewsData
+//   };
+//  }
+
+async getDoctorDashboard(doctorId: string): Promise<any> {
+  const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
+
+  const [statsData, reviewsData, revenueData] = await Promise.all([
+
+    // Stats Aggregation
+    AppointmentModel.aggregate([
+      {
+        $lookup: {
+          from: 'slots',
+          localField: 'slot_id',
+          foreignField: '_id',
+          as: 'slot'
+        }
+      },
+      { $unwind: '$slot' },
+      { $match: { 'slot.doctor_id': doctorObjectId } },
+      {
+        $group: {
+          _id: null,
+          totalAppointments: { $sum: 1 },
+          uniquePatients: { $addToSet: '$user_id' }
+        }
+      },
+      {
+        $project: {
+          totalAppointments: 1,
+          totalPatients: { $size: '$uniquePatients' }
+        }
+      }
+    ]),
+
+    // Review Aggregation
+    ReviewModel.aggregate([
+      {
+        $lookup: {
+          from: 'appointments',
+          localField: 'appointmentId',
+          foreignField: '_id',
+          as: 'appointment'
+        }
+      },
+      { $unwind: '$appointment' },
+      {
+        $lookup: {
+          from: 'slots',
+          localField: 'appointment.slot_id',
+          foreignField: '_id',
+          as: 'slot'
+        }
+      },
+      { $unwind: '$slot' },
+      { $match: { 'slot.doctor_id': doctorObjectId } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'patient'
+        }
+      },
+      { $unwind: '$patient' },
+      {
+        $project: {
+          reviewId: { $toString: '$_id' },
+          rating: 1,
+          reviewText: 1,
+          patientName: '$patient.username',
+          createdAt: { $dateToString: { format: "%Y-%m-%dT%H:%M:%S.%LZ", date: "$createdAt" } }
+        }
+      }
+    ]),
+
+    // Revenue Aggregation
+    AppointmentModel.aggregate([
+      {
+        $lookup: {
+          from: 'slots',
+          localField: 'slot_id',
+          foreignField: '_id',
+          as: 'slot'
+        }
+      },
+      { $unwind: '$slot' },
+      { $match: { 'slot.doctor_id': doctorObjectId, status: 'completed' } }, // Consider only completed appointments
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ])
+  ]);
+
+  const totalRating = reviewsData.reduce((acc, cur) => acc + cur.rating, 0);
+  const averageRating = reviewsData.length > 0 ? totalRating / reviewsData.length : 0;
+
+  const totalAmount = revenueData[0]?.totalAmount || 0;
+  const totalRevenue = parseFloat((totalAmount * 0.9).toFixed(2)); // 10% deduction
+
+  return {
+    stats: {
+      totalAppointments: statsData[0]?.totalAppointments || 0,
+      totalPatients: statsData[0]?.totalPatients || 0,
+      averageRating: parseFloat(averageRating.toFixed(2)),
+      totalRevenue
+    },
+    reviews: reviewsData
+  };
+}
+
+}
 
 export const userRepository = new UserRepository();
 

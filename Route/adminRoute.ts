@@ -16,5 +16,6 @@ adminrouter.patch('/doctors/:id/verify',adminAuth,adminController.verifyDoctor.b
 adminrouter.get('/dashboard-metrics', adminAuth, adminController.getDashboardMetrics.bind(adminController));
 adminrouter.get('/appointment-stats', adminAuth, adminController.getAppointmentStats.bind(adminController));
 adminrouter.post('/refresh-token',adminController.refreshToken.bind(adminController));
+adminrouter.get('/review',adminAuth, adminController.getReviews.bind(adminController));
 
 export default adminrouter;

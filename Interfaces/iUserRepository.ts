@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { Appointment, AppointmentDetails, AppointmentData,DashboardStats, ChartAppointmentStats } from "./appointment";
-import { DoctorAppointment, User, UserRole } from "./user";
+import { DashboardResponseType, DoctorAppointment, Review, ReviewAdminside, User, UserRole } from "./user";
 import { Prescription } from "./prescription";
 
 
@@ -55,5 +55,6 @@ export interface IUserRepository {
   updateAppointment(appointmentId: string, status: string): Promise<DoctorAppointment>;
   getPrescriptions(appointmentId: string): Promise<Prescription[]>;
   createReview: (appointmentid: string, rating:number, reviewText: string,userid:string) => any
-
+  getAllReviews: () => Promise<ReviewAdminside[]>
+  getDoctorDashboard(doctorId: string): Promise<DashboardResponseType>;
 }

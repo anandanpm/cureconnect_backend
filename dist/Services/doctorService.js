@@ -472,6 +472,17 @@ class DoctorService {
             throw new Error('Failed to complete appointment');
         }
     }
+    async getDetailsDashboard(doctorId) {
+        try {
+            const response = await this.userRepository.getDoctorDashboard(doctorId);
+            console.log(response, 'is what is comming');
+            return response;
+        }
+        catch (error) {
+            console.error('Error in getDetailsDashboard:', error);
+            throw new Error('Failed to fetch dashboard details');
+        }
+    }
 }
 exports.DoctorService = DoctorService;
 exports.doctorService = new DoctorService(userRepository_1.userRepository, slotRepository_1.slotRepository, otpService_1.otpService);

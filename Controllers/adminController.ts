@@ -249,6 +249,20 @@ async refreshToken(req: Request, res: Response): Promise<void> {
   }
 }
 
+async getReviews(req: Request, res: Response): Promise<void> {
+  try {
+    const reviews = await this.AdminService.getReviews();
+    res.status(200).json(reviews);
+  } catch (error) {
+    console.error('Get Reviews Error:', error);
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(400).json({ message: 'An unknown error occurred' });
+    }
+  }
+}
+
 }
 
 export const adminController = new AdminController(new AdminService(userRepository,emailService));

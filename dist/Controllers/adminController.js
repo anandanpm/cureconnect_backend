@@ -233,5 +233,20 @@ class AdminController {
             res.status(500).json({ message: 'Internal server error' });
         }
     }
+    async getReviews(req, res) {
+        try {
+            const reviews = await this.AdminService.getReviews();
+            res.status(200).json(reviews);
+        }
+        catch (error) {
+            console.error('Get Reviews Error:', error);
+            if (error instanceof Error) {
+                res.status(400).json({ message: error.message });
+            }
+            else {
+                res.status(400).json({ message: 'An unknown error occurred' });
+            }
+        }
+    }
 }
 exports.adminController = new AdminController(new adminService_1.AdminService(userRepository_1.userRepository, emailService_1.emailService));

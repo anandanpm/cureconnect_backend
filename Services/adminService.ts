@@ -1,4 +1,4 @@
-import { AdminLoginResponse, User, UserRole } from "../Interfaces/user";
+import { AdminLoginResponse, Review, ReviewAdminside, User, UserRole } from "../Interfaces/user";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -202,6 +202,20 @@ export class AdminService implements IAdminService{
       throw error;
     }
   }
+
+  async getReviews(): Promise<ReviewAdminside[]> {
+    try {
+      const reviews = await this.userRepository.getAllReviews();
+      console.log('review is comming or not ',reviews)
+      return reviews;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Error fetching reviews');
+    }
+  }
+
 }
 
 export const adminService = new AdminService(userRepository,emailService);

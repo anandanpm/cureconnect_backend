@@ -1,5 +1,5 @@
 import { ChartAppointmentStats, DashboardStats } from "./appointment";
-import { AdminLoginResponse, User } from "./user";
+import { AdminLoginResponse, Review, ReviewAdminside, User } from "./user";
 
 export interface IAdminService {
     
@@ -25,4 +25,6 @@ export interface IAdminService {
     getDashboardMetrics(): Promise<DashboardStats>;
 
     getAppointmentChartStats(timeRange: string): Promise<ChartAppointmentStats>;
+    
+    getReviews(): Promise<ReviewAdminside[]>;
   }

@@ -1,6 +1,6 @@
 import { userRepository } from "../Repository/userRepository";
 import { slotRepository } from "../Repository/slotRepository";
-import { DoctorAppointment, DoctorLoginResponse,DoctorSignupResponse, User } from "../Interfaces/user";
+import { DashboardResponseType, DoctorAppointment, DoctorLoginResponse,DoctorSignupResponse, User } from "../Interfaces/user";
 import {otpService}from '../Services/otpService'
 import { UserRole } from "../Interfaces/user";
 import bcrypt from "bcrypt";
@@ -544,6 +544,17 @@ export class DoctorService implements IDoctorService {
     } catch (error) {
       console.error('Error in completeAppointment:', error);
       throw new Error('Failed to complete appointment');
+    }
+  }
+
+  async getDetailsDashboard(doctorId: string): Promise<DashboardResponseType> {
+    try {
+       const response = await this.userRepository.getDoctorDashboard(doctorId);
+       console.log(response,'is what is comming')
+       return response;
+    } catch (error) {
+      console.error('Error in getDetailsDashboard:', error);
+      throw new Error('Failed to fetch dashboard details');
     }
   }
 

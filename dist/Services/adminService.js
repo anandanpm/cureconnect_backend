@@ -171,6 +171,19 @@ class AdminService {
             throw error;
         }
     }
+    async getReviews() {
+        try {
+            const reviews = await this.userRepository.getAllReviews();
+            console.log('review is comming or not ', reviews);
+            return reviews;
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                throw error;
+            }
+            throw new Error('Error fetching reviews');
+        }
+    }
 }
 exports.AdminService = AdminService;
 exports.adminService = new AdminService(userRepository_1.userRepository, emailService_1.emailService);

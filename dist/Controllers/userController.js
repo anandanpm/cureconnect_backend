@@ -227,6 +227,7 @@ class UserController {
             console.log("Pagination:", { page, pageSize });
             const appointmentDetails = await this.UserService.getAppointmentDetails(userId, page, pageSize);
             console.log('Total appointments found:', appointmentDetails.totalCount);
+            console.log(appointmentDetails, 'the appointment details is comming or not');
             res.status(200).json(appointmentDetails);
         }
         catch (error) {

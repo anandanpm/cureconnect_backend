@@ -1,6 +1,6 @@
 import { Prescription } from "./prescription";
 import { Slot } from "./slot";
-import { DoctorAppointment, DoctorDetails, DoctorLoginResponse, DoctorSignupRequest, DoctorSignupResponse, DoctorSlotRequest, LoginResponse, OtpResponse, User } from "./user";
+import { DashboardResponseType, DoctorAppointment, DoctorDetails, DoctorLoginResponse, DoctorSignupRequest, DoctorSignupResponse, DoctorSlotRequest, LoginResponse, OtpResponse, User } from "./user";
 
 export interface IDoctorService {
     signup(userData: DoctorSignupRequest): Promise<DoctorSignupResponse>;
@@ -36,6 +36,9 @@ export interface IDoctorService {
     resetForgottenpassword(email: string, password: string): Promise<OtpResponse>;
 
     prescription(prescriptionData:Prescription): Promise<Prescription>;
+
     completeAppointment(appointmentId: string): Promise<DoctorAppointment>;
+
+    getDetailsDashboard(doctorId: string): Promise<DashboardResponseType>;
   }
    

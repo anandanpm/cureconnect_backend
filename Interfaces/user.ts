@@ -186,3 +186,34 @@ export interface ReviewResponse {
   userId: string;
   createdAt: Date;
 }
+
+
+export interface ReviewAdminside {
+  _id: string
+  appointmentId: string  // Reference to the appointment
+  doctorName: string
+  doctorId: string
+  doctorImage?: string
+  patientName: string
+  patientId: string
+  patientImage?: string
+  reviewText: string
+  reviewRating: number
+  createdAt: string
+}
+
+export interface DashboardResponseType {
+  stats: { 
+    totalAppointments: number;
+    totalPatients: number;
+    averageRating: number;
+    totalRevenue:number;
+  };
+  reviews: {
+    reviewId: string;
+    rating: number;
+    reviewText: string;
+    patientName: string;
+    createdAt: string;
+  }[];
+}

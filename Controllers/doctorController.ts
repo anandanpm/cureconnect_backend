@@ -354,6 +354,19 @@ import jwt from 'jsonwebtoken';
            res.status(500).json({ message: 'Internal server error' });
          }
        }
+
+       async getDetailsDashboard(req:Request,res:Response):Promise<void>{
+        try {
+          const { doctorId } = req.params;
+          console.log(doctorId, 'the doctor id is coming');
+          
+          const details = await this.DoctorService.getDetailsDashboard(doctorId);
+          res.status(200).json(details);
+        } catch (error) {
+          console.error('Error fetching details:', error);
+          res.status(500).json({ message: 'Failed to fetch details' });
+        }
+       }
   }
 
  
