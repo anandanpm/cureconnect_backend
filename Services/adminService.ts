@@ -41,7 +41,7 @@ export class AdminService implements IAdminService{
       }
 
       const refreshToken = jwt.sign(
-        { userId: admin._id },
+        { userId: admin._id, role: admin.role  },
         process.env.REFRESH_TOKEN_SECRET,
         { expiresIn: "7d" }
       );

@@ -7,7 +7,7 @@ export enum UserRole {
 }
 
 export interface User {
-  _id?: Types.ObjectId |string;
+  _id?: Types.ObjectId | string;
   username: string;
   email: string;
   phone?: number;
@@ -29,24 +29,24 @@ export interface User {
   certification?: string;
   created_at?: Date;
   updated_at?: Date;
-  otp?: string|null;
-  otp_expiration?: Date|null;
+  otp?: string | null;
+  otp_expiration?: Date | null;
 }
 
 export interface SignupResponse {
   message: string;
-  userId: string 
+  userId: string
   username: string;
   email: string;
   role: UserRole;
 }
 
-export interface SignupRequest{
-  username:string;
-  email:string;
-  password:string;
-  role:UserRole;
-  _id:string;
+export interface SignupRequest {
+  username: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  _id: string;
 }
 
 export interface LoginResponse {
@@ -62,13 +62,13 @@ export interface LoginResponse {
   phone?: number;
   age?: number;
   address?: string;
-  experience?:string;
-  certification?:string;
-  department?:string;
-  medical_license?:string;
-  clinic_name?:string;
-  about?:string;
-  education?:string;
+  experience?: string;
+  certification?: string;
+  department?: string;
+  medical_license?: string;
+  clinic_name?: string;
+  about?: string;
+  education?: string;
 
 }
 
@@ -81,7 +81,6 @@ export interface DoctorDetails {
   clinic_name?: string;
   medical_license?: string;
 }
-
 
 export interface DoctorLoginResponse {
   accessToken: string;
@@ -120,15 +119,12 @@ export interface DoctorSignupResponse {
   role: UserRole;
 }
 
-
-
 export interface DoctorSlotRequest {
   doctor_id: string | Types.ObjectId;
   day: any;
   start_time: string;
   end_time: string;
 }
-
 
 export interface DoctorAppointment {
   _id?: any;
@@ -139,23 +135,20 @@ export interface DoctorAppointment {
     start_time: string;
     end_time: string;
   };
-  status:string;
+  status: string;
   date?: Date;
   created_at?: string;
   updated_at?: string;
 }
 
-
 export interface OtpResponse {
   message: string;
 }
-
 
 export interface PasswordResetRequest {
   oldPassword: string;
   newPassword: string;
 }
-
 
 export interface AdminLoginResponse {
   accessToken: string;
@@ -166,16 +159,14 @@ export interface AdminLoginResponse {
   isActive: boolean;
 }
 
-
 export interface Review {
-  appointmentId: string|Types.ObjectId;
+  appointmentId: string | Types.ObjectId;
   rating: number;
   reviewText: string;
-  userId: string|Types.ObjectId;
+  userId: string | Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }
-
 
 export interface ReviewResponse {
   message: string;
@@ -186,7 +177,6 @@ export interface ReviewResponse {
   userId: string;
   createdAt: Date;
 }
-
 
 export interface ReviewAdminside {
   _id: string
@@ -203,11 +193,11 @@ export interface ReviewAdminside {
 }
 
 export interface DashboardResponseType {
-  stats: { 
+  stats: {
     totalAppointments: number;
     totalPatients: number;
     averageRating: number;
-    totalRevenue:number;
+    totalRevenue: number;
   };
   reviews: {
     reviewId: string;

@@ -6,10 +6,10 @@ export interface Appointment {
   _id?: Types.ObjectId;
   slot_id: Types.ObjectId;
   user_id: Types.ObjectId;
-   amount: number;
-   refund:number;
-  status: 'pending'| 'cancelled' | 'completed';
-  payment_id:string;
+  amount: number;
+  refund: number;
+  status: 'pending' | 'cancelled' | 'completed';
+  payment_id: string;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -46,37 +46,31 @@ export interface AppointmentDetails {
   appointmentId: string;
   amount?: string;
   refund?: number;
-  doctor_id?:any;
-  patient_id?:string;
-  created_at?:string;
-  updated_at?:string;
+  doctor_id?: any;
+  patient_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
-
-
-
-
-
 
 export interface AppointmentResponse {
   message: string;
   appointment: {
-    slot_id: string|any;
-    user_id: string|any;
+    slot_id: string | any;
+    user_id: string | any;
     amount: number;
     payment_id: string;
     status: string;
     _id?: string;
   };
   updatedSlot: {
-    doctor_id: string|any;
+    doctor_id: string | any;
     day: string;
     start_time: string;
     end_time: string;
     status: string;
-    _id: string|any;
+    _id: string | any;
   };
 }
-
 
 export interface DashboardStats {
   totalDoctors: number;

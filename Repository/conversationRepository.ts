@@ -32,9 +32,9 @@ class ConversationRepository implements IConversationRepository {
           { sender: receiver, receiver: sender },
         ],
       });
-      
+
       if (!conversation) return null;
-      
+
       return this.transformConversation(conversation as unknown as IConversation);
     } catch (error) {
       console.error("Error finding conversation:", error);
@@ -43,8 +43,8 @@ class ConversationRepository implements IConversationRepository {
   }
 
   async createConversation(
-    sender: string, 
-    receiver: string, 
+    sender: string,
+    receiver: string,
     message: Omit<IMessage, '_id'>
   ): Promise<TransformedConversation> {
     try {
@@ -67,7 +67,7 @@ class ConversationRepository implements IConversationRepository {
   }
 
   async addMessage(
-    conversationId: string, 
+    conversationId: string,
     message: Omit<IMessage, '_id'>
   ): Promise<TransformedConversation> {
     try {

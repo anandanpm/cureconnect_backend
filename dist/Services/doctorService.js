@@ -84,6 +84,9 @@ class DoctorService {
             if (!passwordMatch) {
                 throw new Error("Invalid credentials");
             }
+            if (user.is_active === false) {
+                throw new Error('User is Blocked');
+            }
             if (!process.env.JWT_SECRET) {
                 throw new Error("JWT_SECRET is not defined");
             }
@@ -93,7 +96,7 @@ class DoctorService {
             if (!process.env.REFRESH_TOKEN_SECRET) {
                 throw new Error("REFRESH_TOKEN_SECRET is not defined");
             }
-            const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, {
+            const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id, role: user.role }, process.env.REFRESH_TOKEN_SECRET, {
                 expiresIn: "7d",
             });
             return {
@@ -256,7 +259,7 @@ class DoctorService {
                 throw new Error("Only doctors can add slots");
             }
             const slot = await slotRepository_1.slotRepository.createSlot(slotData);
-            if (!slot) {
+            if (slot === undefined || slot === null) {
                 throw new Error("Failed to add slot");
             }
             return slot;
@@ -268,13 +271,25 @@ class DoctorService {
     async getSlots(doctorId) {
         try {
             const currentDate = new Date();
-            // await this.slotRepository.deletePastSlots(doctorId, currentDate);
             const slots = await this.slotRepository.getSlotsByDoctorId(doctorId);
             return slots;
         }
         catch (error) {
             console.error("Error fetching slots:", error);
             throw new Error("Failed to fetch slots");
+        }
+    }
+    async deleteSlot(slotId) {
+        try {
+            const slot = await this.slotRepository.deleteSlotById(slotId);
+            if (!slot) {
+                throw new Error("Failed to delete slot");
+            }
+            return slot;
+        }
+        catch (error) {
+            console.error("Error deleting slot:", error);
+            throw new Error("Failed to delete slot");
         }
     }
     async getDoctorAppointments(doctorId) {

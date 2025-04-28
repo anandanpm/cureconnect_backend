@@ -23,7 +23,7 @@ const prescriptionSchema = new Schema<Prescription>({
 });
 
 // Update the updated_at field on save
-prescriptionSchema.pre('save', function(next) {
+prescriptionSchema.pre('save', function (next) {
   this.updated_at = new Date();
   next();
 });

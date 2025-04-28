@@ -42,6 +42,7 @@ class UserService {
         }
         const hashedPassword = await bcrypt_1.default.hash(password, 10);
         const otp = this.OtpService.generateOTP();
+        console.log(otp, 'the otp is comming for the user');
         const otpExpiration = this.OtpService.generateOtpExpiration();
         const newUser = { username, email, password: hashedPassword, otp, otp_expiration: otpExpiration, role: user_1.UserRole.PATIENT };
         let createdUser = await this.userRepository.createUser(newUser);
@@ -96,7 +97,7 @@ class UserService {
             if (!process.env.REFRESH_TOKEN_SECRET) {
                 throw new Error('REFRESH_TOKEN_SECRET is not defined');
             }
-            const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, {
+            const refreshToken = jsonwebtoken_1.default.sign({ userId: user._id, role: user.role }, process.env.REFRESH_TOKEN_SECRET, {
                 expiresIn: '7d',
             });
             return { accessToken, refreshToken, username: user.username, email: user.email, isActive: user.is_active, role: user.role, _id: user._id, gender: user.gender, profile_pic: user.profile_pic, phone: user.phone, age: user.age, address: user.address };
@@ -177,8 +178,7 @@ class UserService {
             };
         }
         catch (error) {
-            console.error('Google Auth Error:', error);
-            throw new Error('Failed to authenticate with Google');
+            throw error;
         }
     }
     async profile(userdetails) {
@@ -298,36 +298,6 @@ class UserService {
             throw error;
         }
     }
-    // async getAppointmentDetails(userId: string): Promise<AppointmentDetails[]> {
-    //   try {
-    //     const appointmentDetails = await this.userRepository.findPendingAppointmentsByUserId(userId)
-    //     // Instead of throwing error, just return empty array if no appointments
-    //     if (!appointmentDetails || appointmentDetails.length === 0) {
-    //       return []
-    //     }
-    //     return appointmentDetails.map(appointment => ({
-    //       date: appointment.slot_id?.day ? new Date(appointment.slot_id.day) : new Date(), // Ensure date format
-    //       _id: appointment._id?.toString() || '', // Ensure _id is a string
-    //       user_id: appointment.user_id?._id?.toString() || '', // Ensure user_id is a string
-    //       slot_id: appointment.slot_id?._id?.toString() || '', // Ensure slot_id is a string
-    //       doctorName: appointment.slot_id?.doctor_id?.username || 'Unknown Doctor',
-    //       doctorId: appointment.slot_id?.doctor_id?._id?.toString() || '',
-    //       patientId: appointment.user_id?._id?.toString() || '',
-    //       doctorDepartment: appointment.slot_id?.doctor_id?.department || 'Not Specified',
-    //       patientName: appointment.user_id?.username || 'Unknown Patient',
-    //       startTime: appointment.slot_id?.start_time || '',
-    //       endTime: appointment.slot_id?.end_time || '',
-    //       appointmentDate: appointment.slot_id?.day || '',
-    //       status: appointment.status || 'pending',
-    //       appointmentId: appointment._id?.toString() || '',
-    //       amount: appointment.amount?.toString() || '',
-    //       refund: appointment.refund || 0
-    //     }))
-    //   } catch (error) {
-    //     console.error("Error fetching appointment details:", error)
-    //     throw error // Only throw for actual errors, not for empty results
-    //   }
-    // }
     async getAppointmentDetails(userId, page = 1, pageSize = 3) {
         try {
             const { appointments: appointmentDetails, totalCount } = await this.userRepository.findPendingAppointmentsByUserId(userId, page, pageSize);
@@ -408,36 +378,6 @@ class UserService {
             throw new Error('Failed to process refund');
         }
     }
-    // async getcancelandcompleteAppointmentDetails(userId: string): Promise<AppointmentDetails[]> {
-    //   try {
-    //     const appointmentDetails = await this.userRepository.findcancelandcompleteAppointmentsByUserId(userId)
-    //     // Instead of throwing error, just return empty array if no appointments
-    //     if (!appointmentDetails || appointmentDetails.length === 0) {
-    //       return []
-    //     }
-    //     return appointmentDetails.map(appointment => ({
-    //       date: appointment.slot_id?.day ? new Date(appointment.slot_id.day) : new Date(), // Ensure date format
-    //       _id: appointment._id?.toString() || '', // Ensure _id is a string
-    //       user_id: appointment.user_id?._id?.toString() || '', // Ensure user_id is a string
-    //       slot_id: appointment.slot_id?._id?.toString() || '', // Ensure slot_id is a string
-    //       doctorName: appointment.slot_id?.doctor_id?.username || 'Unknown Doctor',
-    //       doctorId: appointment.slot_id?.doctor_id?._id?.toString() || '',
-    //       patientId: appointment.user_id?._id?.toString() || '',
-    //       doctorDepartment: appointment.slot_id?.doctor_id?.department || 'Not Specified',
-    //       patientName: appointment.user_id?.username || 'Unknown Patient',
-    //       startTime: appointment.slot_id?.start_time || '',
-    //       endTime: appointment.slot_id?.end_time || '',
-    //       appointmentDate: appointment.slot_id?.day || '',
-    //       status: appointment.status || 'pending',
-    //       appointmentId: appointment._id?.toString() || '',
-    //       amount: appointment.amount?.toString() || '',
-    //       refund: appointment.refund || 0
-    //     }))
-    //   } catch (error) {
-    //     console.error("Error fetching appointment details:", error)
-    //     throw error // Only throw for actual errors, not for empty results
-    //   }
-    // }
     async getcancelandcompleteAppointmentDetails(userId, page = 1, limit = 3, status) {
         try {
             // Get all appointments for counting and pagination

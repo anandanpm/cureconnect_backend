@@ -55,7 +55,10 @@ const PORT = process.env.PORT;
 
 connectDB();
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+}));
 app.use(express.json());
 app.use(cookieParser());
 

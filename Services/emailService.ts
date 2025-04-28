@@ -4,7 +4,7 @@ import { IEmailService } from "../Interfaces/iEmailService"
 
 dotenv.config()
 
-class EmailService implements IEmailService  {
+class EmailService implements IEmailService {
   private transporter: nodemailer.Transporter
 
   constructor() {
@@ -14,6 +14,9 @@ class EmailService implements IEmailService  {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false 
+      }
     })
   }
 

@@ -6,10 +6,10 @@ import dotenv from 'dotenv';
 import { IOtpService } from 'Interfaces/iotpService';
 dotenv.config()
 
- class OtpService implements IOtpService {
-  
+class OtpService implements IOtpService {
+
   generateOTP(): string {
-    return crypto.randomInt(1000, 9999).toString(); 
+    return crypto.randomInt(1000, 9999).toString();
   }
 
   generateOtpExpiration(): Date {
@@ -24,12 +24,14 @@ dotenv.config()
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
+        tls: {
+          rejectUnauthorized: false 
+        }
       });
-
       const mailOptions = {
         from: process.env.EMAIL_FROM,
         to: email,
-        subject: 'Curra_Connect: OTP for Secure Signup', 
+        subject: 'Curra_Connect: OTP for Secure Signup',
         text: `
             Dear User
             

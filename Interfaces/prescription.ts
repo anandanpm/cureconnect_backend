@@ -15,7 +15,7 @@ export interface Medicine {
 
 export interface Prescription {
   _id?: Types.ObjectId;
-  appointment_id: Types.ObjectId|string;
+  appointment_id: Types.ObjectId | string;
   medicines: Medicine[];
   notes?: string;
   created_at?: Date;

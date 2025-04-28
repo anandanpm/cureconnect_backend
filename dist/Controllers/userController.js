@@ -58,17 +58,16 @@ class UserController {
             const { Email, password } = req.body;
             console.log(req.body);
             const { accessToken, refreshToken, username, email, role, isActive, _id, gender, profile_pic, phone, age, address } = await this.UserService.login(Email, password);
+            // Fix: Include httpOnly option and fix sameSite settings
             res.cookie('accessToken', accessToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-                maxAge: 60 * 60 * 1000,
-                path: '/'
+                sameSite: 'strict',
+                maxAge: 15 * 60 * 1000,
             });
             res.cookie('refreshToken', refreshToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/'
             });
             res.json({ message: 'Login successful', username, email, role, isActive, _id, age, gender, profile_pic, phone, address });
         }
@@ -99,15 +98,13 @@ class UserController {
             const result = await this.UserService.googleAuth(token);
             res.cookie('accessToken', result.accessToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-                maxAge: 60 * 60 * 1000,
-                path: '/'
+                sameSite: 'strict',
+                maxAge: 15 * 60 * 1000,
             });
             res.cookie('refreshToken', result.refreshToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/'
             });
             res.status(200).json({
                 message: 'Google authentication successful',
@@ -124,8 +121,8 @@ class UserController {
             });
         }
         catch (error) {
-            console.error("Google Auth Error:", error);
-            res.status(400).json({ message: error.message });
+            console.error("GoogleLogin Error:", error);
+            res.status(401).json({ message: error.message });
         }
     }
     async updateProfile(req, res) {
@@ -201,23 +198,6 @@ class UserController {
             res.status(500).json({ message: 'Failed to create appointment' });
         }
     }
-    // async appointmentDetails(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const userId = req.params.id
-    //     console.log(req.params,'is this comming')
-    //     console.log(userId, "the userId is coming from params")
-    //     const appointmentDetails = await this.UserService.getAppointmentDetails(userId)
-    //   console.log(appointmentDetails,'the details are comming ')
-    //     res.status(200).json(appointmentDetails)
-    //   } catch (error) {
-    //     console.error("Error in appointmentDetails:", error)
-    //     if (error instanceof Error && error.message === "No appointment found for this user") {
-    //       res.status(404).json({ message: "No appointment found for this user" })
-    //     } else {
-    //       res.status(500).json({ message: "Internal server error" })
-    //     }
-    //   }
-    // }
     async appointmentDetails(req, res) {
         try {
             const userId = req.params.id;
@@ -252,23 +232,6 @@ class UserController {
             res.status(500).json({ message: 'Internal server error' });
         }
     }
-    // async cancelandcompleteAppointmentDetails(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const userId = req.params.id
-    //     console.log(req.params,'is this comming')
-    //     console.log(userId, "the userId is coming from params")
-    //     const appointmentDetails = await this.UserService.getcancelandcompleteAppointmentDetails(userId)
-    //   console.log(appointmentDetails,'the details are comming ')
-    //     res.status(200).json(appointmentDetails)
-    //   } catch (error) {
-    //     console.error("Error in appointmentDetails:", error)
-    //     if (error instanceof Error && error.message === "No appointment found for this user") {
-    //       res.status(404).json({ message: "No appointment found for this user" })
-    //     } else {
-    //       res.status(500).json({ message: "Internal server error" })
-    //     }
-    //   }
-    // }
     async cancelandcompleteAppointmentDetails(req, res) {
         try {
             const userId = req.params.id;
@@ -362,7 +325,11 @@ class UserController {
             // Check if refresh token exists
             if (!refreshToken) {
                 console.log('Refresh token not found in cookies');
-                res.status(401).json({ message: 'Refresh token not found in cookies' });
+                // Send a special status code to identify missing refresh token
+                res.status(403).json({
+                    message: 'Refresh token not found in cookies',
+                    tokenState: 'MISSING_REFRESH_TOKEN'
+                });
                 return;
             }
             // Verify the token
@@ -374,26 +341,35 @@ class UserController {
                 console.log(decoded, 'is the decoded is coming or not');
                 // Generate new tokens
                 const userId = decoded.userId;
+                const role = decoded.role;
                 console.log(userId, 'the userid is comming or not');
-                const newAccessToken = jsonwebtoken_1.default.sign({ userId: userId }, process.env.JWT_SECRET || '', { expiresIn: '15m' });
-                const newRefreshToken = jsonwebtoken_1.default.sign({ userId: userId }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+                const newAccessToken = jsonwebtoken_1.default.sign({ userId: userId, role: role }, process.env.JWT_SECRET || '', { expiresIn: '15m' });
+                const newRefreshToken = jsonwebtoken_1.default.sign({ userId: userId, role: role }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
                 // Set the new tokens as cookies
                 res.cookie('accessToken', newAccessToken, {
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                    path: '/',
                     maxAge: 15 * 60 * 1000 // 15 minutes
                 });
                 res.cookie('refreshToken', newRefreshToken, {
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                    path: '/',
                     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
                 });
-                res.status(200).json({ message: 'Token refreshed successfully' });
+                res.status(200).json({
+                    message: 'Token refreshed successfully',
+                    accessToken: newAccessToken
+                });
                 return;
             }
             catch (error) {
                 console.error('Token verification error:', error);
-                res.status(401).json({ message: 'Invalid refresh token' });
+                res.status(403).json({
+                    message: 'Invalid refresh token',
+                    tokenState: 'INVALID_REFRESH_TOKEN'
+                });
                 return;
             }
         }

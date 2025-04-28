@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Appointment, AppointmentDetails, AppointmentData,DashboardStats, ChartAppointmentStats } from "./appointment";
+import { Appointment, AppointmentDetails, AppointmentData, DashboardStats, ChartAppointmentStats } from "./appointment";
 import { DashboardResponseType, DoctorAppointment, Review, ReviewAdminside, User, UserRole } from "./user";
 import { Prescription } from "./prescription";
 
@@ -23,22 +23,22 @@ export interface IUserRepository {
   findAppointmentBySlotId(slotId: string): Promise<Appointment | null>;
   findAppointmentById(appointmentId: string): Promise<Appointment | null>;
   findAppointmentsByDoctorId(doctorId: string): Promise<AppointmentDetails[]>;
-  // findPendingAppointmentsByUserId(userId: string): Promise<AppointmentDetails[]>;
+
   findPendingAppointmentsByUserId(userId: string, page: number, pageSize: number): Promise<{
     appointments: any[];
     totalCount: number;
   }>;
-  // findcancelandcompleteAppointmentsByUserId(userId: string): Promise<AppointmentDetails[]>;
+
   findcancelandcompleteAppointmentsByUserId(
-    userId: string, 
+    userId: string,
     status?: string,
     skip?: number,
     limit?: number
   ): Promise<AppointmentDetails[]>;
-  
+
   getDashboardStats(): Promise<DashboardStats>;
   getAppointmentChartStats(timeRange: string): Promise<ChartAppointmentStats>;
-  findAppointmentWithSlot(appointmentId:string):Promise<AppointmentDetails | null>;
+  findAppointmentWithSlot(appointmentId: string): Promise<AppointmentDetails | null>;
   findVerifiedDoctorsWithFilters(
     page?: number,
     limit?: number,
@@ -54,7 +54,7 @@ export interface IUserRepository {
   createPrescription(prescriptionData: Prescription): Promise<Prescription>;
   updateAppointment(appointmentId: string, status: string): Promise<DoctorAppointment>;
   getPrescriptions(appointmentId: string): Promise<Prescription[]>;
-  createReview: (appointmentid: string, rating:number, reviewText: string,userid:string) => any
+  createReview: (appointmentid: string, rating: number, reviewText: string, userid: string) => any
   getAllReviews: () => Promise<ReviewAdminside[]>
   getDoctorDashboard(doctorId: string): Promise<DashboardResponseType>;
 }

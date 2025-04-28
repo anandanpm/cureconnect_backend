@@ -33,7 +33,7 @@ class AdminService {
             if (!process.env.REFRESH_TOKEN_SECRET) {
                 throw new Error("REFRESH_TOKEN_SECRET is not defined");
             }
-            const refreshToken = jsonwebtoken_1.default.sign({ userId: admin._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+            const refreshToken = jsonwebtoken_1.default.sign({ userId: admin._id, role: admin.role }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
             return {
                 accessToken,
                 refreshToken,

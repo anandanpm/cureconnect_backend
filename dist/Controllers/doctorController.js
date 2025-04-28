@@ -54,16 +54,17 @@ class DoctorController {
         try {
             const { Email, password } = req.body;
             const { accessToken, refreshToken, username, email, isActive, role, profile_pic, age, phone, certification, experience, department, medical_license, address, clinic_name, about, education, gender, _id } = await this.DoctorService.login(Email, password);
-            console.log(username, 'is the username is comming from there');
             res.cookie('accessToken', accessToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
                 maxAge: 60 * 60 * 1000,
+                path: '/'
             });
             res.cookie('refreshToken', refreshToken, {
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/'
             });
             res.json({ message: 'Login successful', username, email: Email, role, isActive, profile_pic, age, phone, certification, experience, department, medical_license, address, clinic_name, about, gender, education, _id });
         }
@@ -277,7 +278,11 @@ class DoctorController {
             // Check if refresh token exists
             if (!refreshToken) {
                 console.log('Refresh token not found in cookies');
-                res.status(401).json({ message: 'Refresh token not found in cookies' });
+                // Send a special status code to identify missing refresh token
+                res.status(403).json({
+                    message: 'Refresh token not found in cookies',
+                    tokenState: 'MISSING_REFRESH_TOKEN'
+                });
                 return;
             }
             // Verify the token
@@ -289,26 +294,35 @@ class DoctorController {
                 console.log(decoded, 'is the decoded is coming or not');
                 // Generate new tokens
                 const userId = decoded.userId;
+                const role = decoded.role;
                 console.log(userId, 'the userid is comming or not');
-                const newAccessToken = jsonwebtoken_1.default.sign({ userId: userId }, process.env.JWT_SECRET || '', { expiresIn: '15m' });
-                const newRefreshToken = jsonwebtoken_1.default.sign({ userId: userId }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+                const newAccessToken = jsonwebtoken_1.default.sign({ userId: userId, role: role }, process.env.JWT_SECRET || '', { expiresIn: '15m' });
+                const newRefreshToken = jsonwebtoken_1.default.sign({ userId: userId, role: role }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
                 // Set the new tokens as cookies
                 res.cookie('accessToken', newAccessToken, {
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                    path: '/',
                     maxAge: 15 * 60 * 1000 // 15 minutes
                 });
                 res.cookie('refreshToken', newRefreshToken, {
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+                    path: '/',
                     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
                 });
-                res.status(200).json({ message: 'Token refreshed successfully' });
+                res.status(200).json({
+                    message: 'Token refreshed successfully',
+                    accessToken: newAccessToken
+                });
                 return;
             }
             catch (error) {
                 console.error('Token verification error:', error);
-                res.status(401).json({ message: 'Invalid refresh token' });
+                res.status(403).json({
+                    message: 'Invalid refresh token',
+                    tokenState: 'INVALID_REFRESH_TOKEN'
+                });
                 return;
             }
         }
@@ -327,6 +341,18 @@ class DoctorController {
         catch (error) {
             console.error('Error fetching details:', error);
             res.status(500).json({ message: 'Failed to fetch details' });
+        }
+    }
+    async deleteSlot(req, res) {
+        try {
+            const { slotId } = req.params;
+            console.log(slotId, 'the slot id is coming');
+            const result = await this.DoctorService.deleteSlot(slotId);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            console.error('Error deleting slot:', error);
+            res.status(500).json({ message: 'Failed to delete slot' });
         }
     }
 }

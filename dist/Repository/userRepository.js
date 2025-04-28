@@ -74,7 +74,6 @@ class UserRepository {
                 path: 'user_id',
                 select: 'username email'
             })
-                .sort({ 'slot_id.day': -1 })
                 .exec()
                 .then((appointments) => appointments
                 .filter((appointment) => appointment.slot_id !== null)
@@ -87,28 +86,14 @@ class UserRepository {
                 status: appointment.status,
                 userId: appointment.user_id._id,
                 appointmentId: appointment._id
-            })));
+            }))
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         }
         catch (error) {
             console.error('Error in findAppointmentsByDoctorId:', error);
             throw error;
         }
     }
-    // async findPendingAppointmentsByUserId(userId: string): Promise<any[]> {
-    //   return AppointmentModel.find({ 
-    //     user_id: userId, 
-    //     status: 'pending' 
-    //   })
-    //   .populate({
-    //     path: "slot_id",
-    //     populate: {
-    //       path: "doctor_id",
-    //       select: "username department profile_pic"
-    //     }
-    //   })
-    //   .populate("user_id", "username email")
-    //   .lean()
-    // }
     async findPendingAppointmentsByUserId(userId, page = 1, pageSize = 3) {
         const skip = (page - 1) * pageSize;
         const totalCount = await appointmentModel_1.default.countDocuments({
@@ -136,49 +121,96 @@ class UserRepository {
             totalCount
         };
     }
-    // async findcancelandcompleteAppointmentsByUserId(userId: string): Promise<any[]> {
-    //  return AppointmentModel.find({ 
-    //     user_id: userId, 
-    //     status: { $in: ['cancelled', 'completed'] }, 
-    //   })
-    //   .populate({
-    //     path: "slot_id",
-    //     populate: {
-    //       path: "doctor_id",
-    //       select: "username department profile_pic"
-    //     }
-    //   })
-    //   .populate("user_id", "username email")
-    //   .lean();
-    // }
     async findcancelandcompleteAppointmentsByUserId(userId, status, skip, limit) {
-        // Build the query based on parameters
-        const query = { user_id: userId };
+        // Build the match condition based on parameters
+        const match = { user_id: new mongoose_1.default.Types.ObjectId(userId) };
         if (status) {
             // If specific status is provided, use that
-            query.status = status;
+            match.status = status;
         }
         else {
             // Otherwise use the default of cancelled and completed
-            query.status = { $in: ['cancelled', 'completed'] };
+            match.status = { $in: ['cancelled', 'completed'] };
         }
-        // Create the base query
-        let appointmentsQuery = appointmentModel_1.default.find(query)
-            .populate({
-            path: "slot_id",
-            populate: {
-                path: "doctor_id",
-                select: "username department profile_pic"
+        // Create the aggregation pipeline
+        const pipeline = [
+            { $match: match },
+            // Lookup to populate slot_id
+            {
+                $lookup: {
+                    from: 'slots', // Collection name for slots
+                    localField: 'slot_id',
+                    foreignField: '_id',
+                    as: 'slot'
+                }
+            },
+            // Unwind the slot array
+            { $unwind: '$slot' },
+            // Lookup to populate doctor within slot
+            {
+                $lookup: {
+                    from: 'users', // Collection name for users/doctors
+                    localField: 'slot.doctor_id',
+                    foreignField: '_id',
+                    as: 'doctor'
+                }
+            },
+            // Unwind the doctor array
+            { $unwind: '$doctor' },
+            // Lookup to populate user_id
+            {
+                $lookup: {
+                    from: 'users', // Collection name for users
+                    localField: 'user_id',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            // Unwind the user array
+            { $unwind: '$user' },
+            // Sort by slot's created_at field
+            { $sort: { 'slot.created_at': -1 } },
+            // Project to format the output similar to populate
+            {
+                $project: {
+                    _id: 1,
+                    status: 1,
+                    prescription: 1,
+                    symptoms: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    slot_id: {
+                        _id: '$slot._id',
+                        day: '$slot.day',
+                        start_time: '$slot.start_time',
+                        end_time: '$slot.end_time',
+                        status: '$slot.status',
+                        created_at: '$slot.created_at',
+                        updated_at: '$slot.updated_at',
+                        doctor_id: {
+                            _id: '$doctor._id',
+                            username: '$doctor.username',
+                            department: '$doctor.department',
+                            profile_pic: '$doctor.profile_pic'
+                        }
+                    },
+                    user_id: {
+                        _id: '$user._id',
+                        username: '$user.username',
+                        email: '$user.email'
+                    }
+                }
             }
-        })
-            .populate("user_id", "username email")
-            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+        ];
         // Apply pagination if provided
-        if (skip !== undefined && limit !== undefined) {
-            appointmentsQuery = appointmentsQuery.skip(skip).limit(limit);
+        if (skip !== undefined) {
+            pipeline.push({ $skip: skip });
+        }
+        if (limit !== undefined) {
+            pipeline.push({ $limit: limit });
         }
         // Execute and return
-        return appointmentsQuery.lean();
+        return appointmentModel_1.default.aggregate(pipeline);
     }
     async getDashboardStats() {
         try {
@@ -192,8 +224,17 @@ class UserRepository {
             const completedAppointments = appointments.filter(apt => apt.status === 'completed').length;
             const cancelledAppointments = appointments.filter(apt => apt.status === 'cancelled').length;
             const pendingAppointments = appointments.filter(apt => apt.status === 'pending').length;
+            // const revenueGenerated = appointments
+            //   .reduce((total, apt) => total + (apt.amount || 0), 0);
             const revenueGenerated = appointments
-                .reduce((total, apt) => total + (apt.amount || 0), 0);
+                .reduce((total, apt) => {
+                // Add the appointment amount if it exists
+                const appointmentAmount = apt.amount || 0;
+                // Subtract the refund amount if it exists
+                const refundAmount = apt.refund || 0;
+                // Return the net amount
+                return total + appointmentAmount - refundAmount;
+            }, 0);
             return {
                 totalDoctors,
                 totalUsers,
@@ -209,212 +250,6 @@ class UserRepository {
             throw error;
         }
     }
-    // async getAppointmentChartStats(timeRange: string): Promise<ChartAppointmentStats> {
-    //   try {
-    //     const now = new Date();
-    //     let startDate: Date;
-    //     let endDate: Date = new Date(now);
-    //     // Adjust time ranges to match API parameters
-    //     switch (timeRange) {
-    //       case 'lastWeek':
-    //         startDate = new Date(now);
-    //         startDate.setDate(now.getDate() - 7);
-    //         break;
-    //       case 'lastMonth':
-    //         startDate = new Date(now);
-    //         startDate.setMonth(now.getMonth() - 1);
-    //         break;
-    //       case 'lastYear':
-    //         startDate = new Date(now);
-    //         startDate.setFullYear(now.getFullYear() - 1);
-    //         break;
-    //       default:
-    //         startDate = new Date(now);
-    //         startDate.setDate(now.getDate() - 7); // Default to last week
-    //     }
-    //     // Reset hours to get full day coverage
-    //     startDate.setHours(0, 0, 0, 0);
-    //     endDate.setHours(23, 59, 59, 999);
-    //     console.log('Date Range:', {
-    //       startDate: startDate.toISOString(),
-    //       endDate: endDate.toISOString()
-    //     });
-    //     // Fetch appointments with correct date range
-    //     const appointments = await AppointmentModel.find({
-    //       createdAt: {
-    //         $gte: startDate,
-    //         $lte: endDate
-    //       }
-    //     }).lean();
-    //     console.log('Found appointments:', appointments.length);
-    //     const formatDate = (date: Date): string => {
-    //       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    //     };
-    //     let result: ChartAppointmentStats = { daily: [], weekly: [], yearly: [] };
-    //     // Generate daily stats for the selected period
-    //     const days: any[] = [];
-    //     let currentDate = new Date(startDate);
-    //     while (currentDate <= endDate) {
-    //       days.push(new Date(currentDate));
-    //       currentDate.setDate(currentDate.getDate() + 1);
-    //     }
-    //     result.daily = days.map(date => {
-    //       const dayStart = new Date(date);
-    //       dayStart.setHours(0, 0, 0, 0);
-    //       const dayEnd = new Date(date);
-    //       dayEnd.setHours(23, 59, 59, 999);
-    //       const count = appointments.filter(apt => {
-    //         const aptDate = new Date(apt.created_at||now);
-    //         return aptDate >= dayStart && aptDate <= dayEnd;
-    //       }).length;
-    //       return {
-    //         name: formatDate(date),
-    //         appointments: count
-    //       };
-    //     });
-    //     // For weekly view, group by weeks
-    //     if (timeRange === 'lastMonth') {
-    //       const weeks = Math.ceil(days.length / 7);
-    //       result.weekly = Array.from({ length: weeks }, (_, weekIndex) => {
-    //         const weekStart = days[weekIndex * 7];
-    //         const weekAppointments = appointments.filter(apt => {
-    //           const aptDate = new Date(apt.created_at||now);
-    //           const weekEndDate = new Date(weekStart);
-    //           weekEndDate.setDate(weekStart.getDate() + 6);
-    //           return aptDate >= weekStart && aptDate <= weekEndDate;
-    //         });
-    //         return {
-    //           name: `Week ${weekIndex + 1}`,
-    //           appointments: weekAppointments.length
-    //         };
-    //       });
-    //     }
-    //     // For yearly view, group by months
-    //     if (timeRange === 'lastYear') {
-    //       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    //       result.yearly = Array.from({ length: 12 }, (_, monthIndex) => {
-    //         const monthStart = new Date(now.getFullYear(), now.getMonth() - (11 - monthIndex), 1);
-    //         const monthEnd = new Date(now.getFullYear(), now.getMonth() - (10 - monthIndex), 0, 23, 59, 59, 999);
-    //         const monthAppointments = appointments.filter(apt => {
-    //           const aptDate = new Date(apt.created_at||now);
-    //           return aptDate >= monthStart && aptDate <= monthEnd;
-    //         });
-    //         return {
-    //           name: months[monthStart.getMonth()],
-    //           appointments: monthAppointments.length
-    //         };
-    //       });
-    //     }
-    //     console.log('Generated stats:', result);
-    //     return result;
-    //   } catch (error) {
-    //     console.error('Error getting appointment chart stats:', error);
-    //     throw error;
-    //   }
-    // }
-    // async getAppointmentChartStats(timeRange: string): Promise<ChartAppointmentStats> {
-    //   try {
-    //     const now = new Date();
-    //     let startDate: Date;
-    //     let endDate: Date = new Date(now);
-    //     // Adjust time ranges to match API parameters
-    //     switch (timeRange) {
-    //       case 'lastWeek':
-    //         startDate = new Date(now);
-    //         startDate.setDate(now.getDate() - 7);
-    //         break;
-    //       case 'lastMonth':
-    //         startDate = new Date(now);
-    //         startDate.setMonth(now.getMonth() - 1);
-    //         break;
-    //       case 'lastYear':
-    //         startDate = new Date(now);
-    //         startDate.setFullYear(now.getFullYear() - 1);
-    //         break;
-    //       default:
-    //         startDate = new Date(now);
-    //         startDate.setDate(now.getDate() - 7); 
-    //     }
-    //     startDate.setHours(0, 0, 0, 0);
-    //     endDate.setHours(23, 59, 59, 999);
-    //     const appointments = await AppointmentModel.aggregate([
-    //       {
-    //         $match: {
-    //           createdAt: {
-    //             $gte: startDate,
-    //             $lte: endDate
-    //           }
-    //         }
-    //       },
-    //       {
-    //         $addFields: {
-    //           createdAtDate: { $toDate: "$createdAt" }
-    //         }
-    //       }
-    //     ]);
-    //     const formatDate = (date: Date): string => {
-    //       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    //     };
-    //     let result: ChartAppointmentStats = { daily: [], weekly: [], yearly: [] };
-    //     const days: Date[] = [];
-    //     let currentDate = new Date(startDate);
-    //     while (currentDate <= endDate) {
-    //       days.push(new Date(currentDate));
-    //       currentDate.setDate(currentDate.getDate() + 1);
-    //     }
-    //     // Daily breakdown
-    //     result.daily = days.map(date => {
-    //       const dayStart = new Date(date);
-    //       dayStart.setHours(0, 0, 0, 0);
-    //       const dayEnd = new Date(date);
-    //       dayEnd.setHours(23, 59, 59, 999);
-    //       const count = appointments.filter(apt => {
-    //         const aptDate = new Date(apt.createdAtDate);
-    //         return aptDate >= dayStart && aptDate <= dayEnd;
-    //       }).length;
-    //       return {
-    //         name: formatDate(date),
-    //         appointments: count
-    //       };
-    //     });
-    //     if (timeRange === 'lastMonth') {
-    //       const weeks = Math.ceil(days.length / 7);
-    //       result.weekly = Array.from({ length: weeks }, (_, weekIndex) => {
-    //         const weekStart = new Date(days[weekIndex * 7]);
-    //         const weekEnd = new Date(weekStart);
-    //         weekEnd.setDate(weekStart.getDate() + 6);
-    //         const weekAppointments = appointments.filter(apt => {
-    //           const aptDate = new Date(apt.createdAtDate);
-    //           return aptDate >= weekStart && aptDate <= weekEnd;
-    //         });
-    //         return {
-    //           name: `Week ${weekIndex + 1}`,
-    //           appointments: weekAppointments.length
-    //         };
-    //       });
-    //     }
-    //     // Yearly breakdown for last year
-    //     if (timeRange === 'lastYear') {
-    //       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    //       result.yearly = Array.from({ length: 12 }, (_, monthIndex) => {
-    //         const monthStart = new Date(now.getFullYear(), monthIndex, 1);
-    //         const monthEnd = new Date(now.getFullYear(), monthIndex + 1, 0, 23, 59, 59, 999);
-    //         const monthAppointments = appointments.filter(apt => {
-    //           const aptDate = new Date(apt.createdAtDate);
-    //           return aptDate >= monthStart && aptDate <= monthEnd;
-    //         });
-    //         return {
-    //           name: months[monthIndex],
-    //           appointments: monthAppointments.length
-    //         };
-    //       });
-    //     }
-    //     return result;
-    //   } catch (error) {
-    //     console.error('Error getting appointment chart stats:', error);
-    //     throw error;
-    //   }
-    // }
     async getAppointmentChartStats(timeRange) {
         try {
             const now = new Date();
@@ -613,16 +448,58 @@ class UserRepository {
         catch (error) {
         }
     }
+    // async getPrescriptions(appointmentId: string): Promise<Prescription[]> {
+    //   try {
+    //     const prescriptions = await PrescriptionModel
+    //       .find({ appointment_id: appointmentId })
+    //       .lean();
+    //     return prescriptions;
+    //   } catch (error) {
+    //     console.error('Error fetching prescriptions:', error);
+    //     // Rethrow to let the service handle the error
+    //     throw error;
+    //   }
+    // }
     async getPrescriptions(appointmentId) {
         try {
+            // First, find the prescription by appointment ID
             const prescriptions = await prescriptionModel_1.default
                 .find({ appointment_id: appointmentId })
                 .lean();
-            return prescriptions;
+            if (!prescriptions || prescriptions.length === 0) {
+                return [];
+            }
+            // Get the appointment details to find related user and doctor info
+            const appointment = await appointmentModel_1.default
+                .findById(appointmentId)
+                .lean();
+            if (!appointment) {
+                return prescriptions; // Return just prescriptions if appointment not found
+            }
+            // Get user details from appointment
+            const patient = await userModel_1.default.findById(appointment.user_id).lean();
+            // Get slot details to find doctor
+            const slot = await slotModel_1.default.findById(appointment.slot_id).lean();
+            // Get doctor details from slot
+            const doctor = slot ? await userModel_1.default.findById(slot.doctor_id).lean() : null;
+            // Enhance prescription with user and doctor details
+            const enhancedPrescriptions = prescriptions.map(prescription => ({
+                ...prescription,
+                patient: patient ? {
+                    username: patient.username,
+                    age: patient.age,
+                    gender: patient.gender
+                } : null,
+                doctor: doctor ? {
+                    username: doctor.username,
+                    department: doctor.department,
+                    clinic_name: doctor.clinic_name
+                } : null
+            }));
+            return enhancedPrescriptions;
         }
         catch (error) {
-            console.error('Error fetching prescriptions:', error);
-            // Rethrow to let the service handle the error
+            console.error('Error fetching prescription with details:', error);
             throw error;
         }
     }
@@ -648,31 +525,6 @@ class UserRepository {
             throw error;
         }
     }
-    // async getAllReviews(): Promise<Review[]> {
-    //   try {
-    //     // Fetch all reviews from the database with nested population
-    //     const reviews = await ReviewModel.find()
-    //       .populate({
-    //         path: 'appointmentId',
-    //         populate: {
-    //           path: 'slot_id',
-    //           populate: {
-    //             path: 'doctor_id',
-    //             select: 'username' 
-    //           }
-    //         }
-    //       })
-    //       .populate('userId', 'username email ')
-    //       .sort({ createdAt: -1 }) // Sort by most recent
-    //       .lean();
-    //     // Map database documents to the Review interface
-    //     console.log(reviews,'is the reviews is comming ')
-    //     return reviews
-    //   } catch (error) {
-    //     console.error('Error in getAllReviews:', error);
-    //     throw new Error('Failed to retrieve reviews');
-    //   }
-    // }
     async getAllReviews() {
         try {
             // Fetch all reviews from the database with nested population
@@ -715,89 +567,6 @@ class UserRepository {
             throw new Error('Failed to retrieve reviews');
         }
     }
-    // async  getDoctorDashboard(doctorId: string): Promise<any> {
-    //   const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
-    //   // Fetch Stats and Reviews
-    //   const [statsData, reviewsData] = await Promise.all([
-    //     // Stats Aggregation
-    //     AppointmentModel.aggregate([
-    //       {
-    //         $lookup: {
-    //           from: 'slots',
-    //           localField: 'slot_id',
-    //           foreignField: '_id',
-    //           as: 'slot'
-    //         }
-    //       },
-    //       { $unwind: '$slot' },
-    //       { $match: { 'slot.doctor_id': doctorObjectId } },
-    //       {
-    //         $group: {
-    //           _id: null,
-    //           totalAppointments: { $sum: 1 },
-    //           uniquePatients: { $addToSet: '$user_id' }
-    //         }
-    //       },
-    //       {
-    //         $project: {
-    //           totalAppointments: 1,
-    //           totalPatients: { $size: '$uniquePatients' }
-    //         }
-    //       }
-    //     ]),
-    //     // Review Aggregation
-    //     ReviewModel.aggregate([
-    //       {
-    //         $lookup: {
-    //           from: 'appointments',
-    //           localField: 'appointmentId',
-    //           foreignField: '_id',
-    //           as: 'appointment'
-    //         }
-    //       },
-    //       { $unwind: '$appointment' },
-    //       {
-    //         $lookup: {
-    //           from: 'slots',
-    //           localField: 'appointment.slot_id',
-    //           foreignField: '_id',
-    //           as: 'slot'
-    //         }
-    //       },
-    //       { $unwind: '$slot' },
-    //       { $match: { 'slot.doctor_id': doctorObjectId } },
-    //       {
-    //         $lookup: {
-    //           from: 'users',
-    //           localField: 'userId',
-    //           foreignField: '_id',
-    //           as: 'patient'
-    //         }
-    //       },
-    //       { $unwind: '$patient' },
-    //       {
-    //         $project: {
-    //           reviewId: { $toString: '$_id' },
-    //           rating: 1,
-    //           reviewText: 1,
-    //           patientName: '$patient.username',
-    //           createdAt: { $dateToString: { format: "%Y-%m-%dT%H:%M:%S.%LZ", date: "$createdAt" } }
-    //         }
-    //       }
-    //     ])
-    //   ]);
-    //   // Calculate average rating
-    //   const totalRating = reviewsData.reduce((acc, cur) => acc + cur.rating, 0);
-    //   const averageRating = reviewsData.length > 0 ? totalRating / reviewsData.length : 0;
-    //   return {
-    //     stats: {
-    //       totalAppointments: statsData[0]?.totalAppointments || 0,
-    //       totalPatients: statsData[0]?.totalPatients || 0,
-    //       averageRating: parseFloat(averageRating.toFixed(2))
-    //     },
-    //     reviews: reviewsData
-    //   };
-    //  }
     async getDoctorDashboard(doctorId) {
         const doctorObjectId = new mongoose_1.default.Types.ObjectId(doctorId);
         const [statsData, reviewsData, revenueData] = await Promise.all([

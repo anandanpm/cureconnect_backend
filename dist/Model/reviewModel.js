@@ -38,7 +38,7 @@ const ReviewSchema = new mongoose_1.Schema({
     appointmentId: {
         type: mongoose_1.Schema.Types.ObjectId,
         required: true,
-        ref: 'Appointment' // Reference to Appointment model
+        ref: 'Appointment'
     },
     rating: {
         type: Number,
@@ -54,11 +54,10 @@ const ReviewSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         required: true,
-        ref: 'User' // Reference to User model
+        ref: 'User'
     }
 }, {
-    timestamps: true // Automatically manage createdAt and updatedAt
+    timestamps: true
 });
-// Create and export the model
 const ReviewModel = mongoose_1.default.model('Review', ReviewSchema);
 exports.default = ReviewModel;
